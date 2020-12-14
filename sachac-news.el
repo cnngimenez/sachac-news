@@ -72,7 +72,7 @@ This is where the last updated date and other data is stored."
 
 (defun sachac-news-git-index-org ()
   "Return the index.org path on the git directory."
-  (concat (sachac-news-dir-git) "/sachac-news/index.org") ) ;; defun
+  (concat (sachac-news-dir-git) "/emacs-news/index.org") ) ;; defun
 
 
 (defun sachac-news-show-last-new ()
@@ -148,13 +148,14 @@ If FORCE-UPDATE is t, then do not check if it passe a day."
   (sachac-news-create-dirs)
   (sachac-news-load-data-if-needed)
   (when (or force-update (sachac-news-is-time-for-update-p))
+    (message "Updating Sacha's news!")
     (if (file-exists-p (sachac-news-git-index-org))
 	(shell-command (concat
 			"cd " (sachac-news-dir-git) "; "
 			"git update"))
       (shell-command (concat
 		      "cd " (sachac-news-dir-git) "; "
-		      "git clone https://github.com/sachac-news/sachac-news.git")))
+		      "git clone https://github.com/sachac/emacs-news.git")))
     (sachac-news-update-last-update)) ) ;; defun
 
 
