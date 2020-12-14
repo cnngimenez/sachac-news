@@ -1,11 +1,13 @@
-;;; emacs-news.el --- 
+;;; emacs-news.el --- Read Sacha Chua's emacs-news! -*- lexical-binding: t; -*-
 
 ;; Copyright 2020 cnngimenez
 ;;
 ;; Author: cnngimenez
-;; Version:
-;; Keywords: 
-;; X-URL: not distributed yet
+;; Maintainer: cnngimenez
+;; Version: 0.1.0
+;; Keywords: news
+;; URL: https://github.com/cnngimenez/emacs-news
+;; Package-Requires: ((emacs"25.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -40,11 +42,10 @@
   (search-forward-regexp "^\\*\\* .* Emacs news")
   (let ((emacs-news-title (org-element-at-point)))
     (buffer-substring-no-properties (org-element-property :begin emacs-news-title)
-				    (org-element-property :end emacs-news-title))
-    )
-  ) ;; defun
+				    (org-element-property :end emacs-news-title))) ) ;; defun
 
-(defcustom emacs-news-data-directory "~/.emacs.d/sachac/"
+(defcustom emacs-news-data-directory (concat user-emacs-directory
+					     "sachac/")
   "Where is the data directory?"
   :group 'emacs-news) ;; defcustom
 
@@ -84,8 +85,7 @@ This is where the last updated date and other data is stored."
 	(insert str)
 	
 	(goto-char (point-min))
-	(display-buffer (current-buffer))
-	))
+	(display-buffer (current-buffer))))
     (kill-buffer)) ) ;; defun
 
 (defvar emacs-news-last-update nil
@@ -154,5 +154,6 @@ If FORCE-UPDATE is t, then do not check if it passe a day."
 		      "git clone https://github.com/emacs-news/emacs-news.git")))
     (emacs-news-update-last-update)) ) ;; defun
 
-  
+
+
 ;;; emacs-news.el ends here
