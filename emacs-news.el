@@ -20,7 +20,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 ;;; Commentary:
@@ -47,15 +47,18 @@
 (defcustom emacs-news-data-directory (concat user-emacs-directory
 					     "sachac/")
   "Where is the data directory?"
+  :type 'directory
   :group 'emacs-news) ;; defcustom
 
 (defcustom emacs-news-data-file "data.el"
   "The configuration and data file.
 This is where the last updated date and other data is stored."
+  :type 'file
   :group 'emacs-news) ;; defcustom
 
 (defcustom emacs-news-git-dirname "git"
   "The directory where the git repository should be cloned."
+  :type 'string
   :group 'emacs-news)
 
 (defun emacs-news-dir-git ()
@@ -114,7 +117,7 @@ These variables can be loaded again with `emacs-news-load-data'."
 
 (defun emacs-news-load-data-if-needed ()
   "If the data has not been loaded yet, load it."
-  (when (not emacs-news-data-loaded)
+  (unless emacs-news-data-loaded
     (emacs-news-load-data)
     (setq emacs-news-data-loaded t)) ) ;; defun
 
