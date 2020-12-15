@@ -90,8 +90,12 @@ This is where the last updated date and other data is stored."
 
 	(delete-region (point-min) (point-max))
 	(insert str)
-	
+
 	(goto-char (point-min))
+	
+	(save-excursion
+	  (sachac-news-fold-categories))
+	
 	(display-buffer (current-buffer))))
     (kill-buffer)) ) ;; defun
 
