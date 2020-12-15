@@ -1,0 +1,28 @@
+Sacha Chua's Emacs News is a great way to learn about new things in Emacs. And also, she updates it frequently with cool contents. Also, she uses Org-mode and a git repository, see [[https://github.com/sachac/emacs-news][here]].
+
+So, why not create an Emacs command to download all news and show the latests one? In fact, why not download it every day and alert if something new is founded!?
+
+Well, this Elisp code can do that and a little more:
+
++Every day do:+ (not yet! WIP)
+- Clone or update Sacha Chua's repository in your computer.
+- Get the latest new.
+- +Alert if there is a new blog post (a new Org-mode header).+ (not yet! WIP)
+- Fold the categories that you don't want to see first.
+
+* Requirements
+The ~git~ command must be available at the terminal. 
+
+* Usage
+Load the elisp file and call the ~M-x sachac-news-show-last-new~ to start downloading and getting the last new. The code will execute the proper git command.
+
+* Fold unwanted categories
+You can customize [[help:sachac-news-fold-category-regexp-list][sachac-news-fold-category-regexp-list]] variable with the matching text of the section you want to see folded.
+
+For example, if you are not interested in the "Emacs development" nor in the "Emacs configuration" sections, simply add those strings at the variable. The result can be a list like the following:
+
+#+BEGIN_SRC elisp
+("Emacs config" "Emacs development")
+#+END_SRC
+
+The first section that matches one of these strings will be folded when you call ~M-x sachac-news-show-last-new~.
