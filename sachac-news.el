@@ -34,7 +34,11 @@
 
 (provide 'sachac-news)
 (require 'org-element)
+(require 'org-list)
+(require 'cl-extra)
 
+(defgroup sachac-news nil
+  "Sacha Chua's Emacs news customizations")
 
 (defun sachac-news-take-last-new ()
   "Take the portion of the org file with the last news."
@@ -158,6 +162,72 @@ If FORCE-UPDATE is t, then do not check if it passe a day."
 		      "git clone https://github.com/sachac/emacs-news.git")))
     (sachac-news-update-last-update)) ) ;; defun
 
+
+(defun sachac-news-find-category (category-regexp org-element)
+  "Find the paragraph that matches with the CATEGORY-REGEXP regexp.
+The parameter ORG-ELEMENT is the returned element from 
+`org-element-parse-buffer' or `org-element-at-point'.
+
+Returns the first org-element of type 'paragraph founded."
+  (org-element-map org-element 'paragraph
+    (lambda (paragraph)
+      "Return the PARAGRAPH only when its contents is a string and it matches
+the category regexp."
+      (let ((element (car (org-element-contents paragraph))))
+	(when (and (stringp element)
+		   (string-match-p category-regexp element))
+	  paragraph))) nil t) ) ;; defun
+
+
+(defun sachac-news-find-all-categories (category-regexp-list)
+  "Find all the items that matches the category regexps.
+The CATEGORY-REGEXP-LIST is a list of regexp strings.
+Returns a list of org element of type 'item."  
+
+  (let ((org-elts (org-element-parse-buffer)))
+    (cl-map 'list
+	    (lambda (cat)
+	      "Return the parent of the first paragraph founded.
+If the parent is not of 'item type, return nil."
+	      (let ((maybe-item-elt (org-element-property
+				     :parent
+				     (sachac-news-find-category cat org-elts))))
+		(when (eql (org-element-type maybe-item-elt) 'item)
+		  maybe-item-elt)))
+	    category-regexp-list)) ) ;; defun
+
+(defun sachac-news-fold-all-items (item-list)
+  "Fold all items from ITEM-LIST.
+
+The ITEM-LIST parameter is a list of org element. 
+`org-element-type' should return 'item when called for each item in ITEM-LIST."
+
+  (cl-map 'list
+	  (lambda (item)
+	    (org-list-set-item-visibility
+	     (org-element-property :begin item)
+	     (org-element-property :structure item)
+	     'folded))
+	  item-list)) ;; defun
+
+(defcustom sachac-news-fold-category-regexp-list '()
+  "A list of regexp strings of the matching categories that should be folded.
+
+The function `sachacc-news-fold-categories' use this variable to find
+categories that the user wants to hide."
+  :type '(set regexp)
+  :group 'sachac-news) ;; defcustom
+
+(defun sachac-news-fold-categories (&optional category-regexp-list)
+  "Fold all items that match the category regexps.
+
+Category regexps are taken from `sachac-news-category-regexp-list' or from the
+optional parameter CATEGORY-REGEXP-LIST if given."
+  (interactive)
+  (let ((category-list (if category-regexp-list category-regexp-list
+			 sachac-news-fold-category-regexp-list)))
+    (sachac-news-fold-all-items
+     (sachac-news-find-all-categories category-list))) ) ;; defun
 
 
 ;;; sachac-news.el ends here
