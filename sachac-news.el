@@ -213,9 +213,9 @@ The ITEM-LIST parameter is a list of org element.
 (defcustom sachac-news-fold-category-regexp-list '()
   "A list of regexp strings of the matching categories that should be folded.
 
-The function `sachacc-news-fold-categories' use this variable to find
+The function `sachac-news-fold-categories' use this variable to find
 categories that the user wants to hide."
-  :type '(set regexp)
+  :type '(repeat regexp)
   :group 'sachac-news) ;; defcustom
 
 (defun sachac-news-fold-categories (&optional category-regexp-list)
