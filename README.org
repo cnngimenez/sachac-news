@@ -26,3 +26,5 @@ For example, if you are not interested in the "Emacs development" nor in the "Em
 #+END_SRC
 
 The first section that matches one of these strings will be folded when you call ~M-x sachac-news-show-last-new~.
+
+The interactive function ~M-x sachac-news-fold-categories~ also works on the main Emacs news index.org file.

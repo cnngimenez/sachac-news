@@ -167,12 +167,15 @@ If FORCE-UPDATE is t, then do not check if it passe a day."
     (sachac-news-update-last-update)) ) ;; defun
 
 
-(defun sachac-news-find-category (category-regexp org-element)
-  "Find the paragraph that matches with the CATEGORY-REGEXP regexp.
+(defun sachac-news-find-all-categories (category-regexps &optional org-element)
+  "Find the paragraph that matches with the CATEGORY-REGEXPS regexp.
 The parameter ORG-ELEMENT is the returned element from 
 `org-element-parse-buffer' or `org-element-at-point'.
 
 Returns a list of org-element of type 'item found in the index.org."
+  (unless org-element
+    (setq org-element (org-element-parse-buffer)))
+  
   (org-element-map org-element 'paragraph
     (lambda (paragraph)
       "Return the PARAGRAPH parent only when:
@@ -183,24 +186,14 @@ Returns a list of org-element of type 'item found in the index.org."
 	(when (and
 	       ;; The parent is an item.
 	       (eql (org-element-type parent) 'item)
-	       ;; The contents match.
+	       ;; The contents match one category.
 	       (stringp element)
-	       (string-match-p category-regexp element))
+	       (cl-some (lambda (category)
+			  (string-match-p category element))
+			category-regexps))
 
 	    parent)))) ) ;; defun
 
-
-(defun sachac-news-find-all-categories (category-regexp-list)
-  "Find all the items that matches the category regexps.
-The CATEGORY-REGEXP-LIST is a list of regexp strings.
-Returns a list of org element of type 'item."  
-
-  (let ((org-elts (org-element-parse-buffer)))
-    (apply #'append
-	   (cl-map 'list
-		   (lambda (cat)
-		     (sachac-news-find-category cat org-elts))
-		   category-regexp-list))) ) ;; defun
 
 (defun sachac-news-fold-all-items (item-list)
   "Fold all items from ITEM-LIST.
@@ -228,7 +221,9 @@ categories that the user wants to hide."
   "Fold all items that match the category regexps.
 
 Category regexps are taken from `sachac-news-category-regexp-list' or from the
-optional parameter CATEGORY-REGEXP-LIST if given."
+optional parameter CATEGORY-REGEXP-LIST if given.
+
+This function works on any Org file, even at the Emacs news' index.org."
   (interactive)
   (let ((category-list (if category-regexp-list category-regexp-list
 			 sachac-news-fold-category-regexp-list)))
