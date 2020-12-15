@@ -172,15 +172,22 @@ If FORCE-UPDATE is t, then do not check if it passe a day."
 The parameter ORG-ELEMENT is the returned element from 
 `org-element-parse-buffer' or `org-element-at-point'.
 
-Returns the first org-element of type 'paragraph founded."
+Returns a list of org-element of type 'item found in the index.org."
   (org-element-map org-element 'paragraph
     (lambda (paragraph)
-      "Return the PARAGRAPH only when its contents is a string and it matches
-the category regexp."
-      (let ((element (car (org-element-contents paragraph))))
-	(when (and (stringp element)
-		   (string-match-p category-regexp element))
-	  paragraph))) nil t) ) ;; defun
+      "Return the PARAGRAPH parent only when:
+- its parent is an item.
+- its contents is a string and it matches the category regexp."
+      (let ((element (car (org-element-contents paragraph)))
+	    (parent (org-element-property :parent paragraph)))
+	(when (and
+	       ;; The parent is an item.
+	       (eql (org-element-type parent) 'item)
+	       ;; The contents match.
+	       (stringp element)
+	       (string-match-p category-regexp element))
+
+	    parent)))) ) ;; defun
 
 
 (defun sachac-news-find-all-categories (category-regexp-list)
@@ -189,16 +196,11 @@ The CATEGORY-REGEXP-LIST is a list of regexp strings.
 Returns a list of org element of type 'item."  
 
   (let ((org-elts (org-element-parse-buffer)))
-    (cl-map 'list
-	    (lambda (cat)
-	      "Return the parent of the first paragraph founded.
-If the parent is not of 'item type, return nil."
-	      (let ((maybe-item-elt (org-element-property
-				     :parent
-				     (sachac-news-find-category cat org-elts))))
-		(when (eql (org-element-type maybe-item-elt) 'item)
-		  maybe-item-elt)))
-	    category-regexp-list)) ) ;; defun
+    (apply #'append
+	   (cl-map 'list
+		   (lambda (cat)
+		     (sachac-news-find-category cat org-elts))
+		   category-regexp-list))) ) ;; defun
 
 (defun sachac-news-fold-all-items (item-list)
   "Fold all items from ITEM-LIST.
