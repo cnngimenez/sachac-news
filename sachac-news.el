@@ -320,5 +320,21 @@ This function works on any Org file, even at the Emacs news' index.org."
 ;; Alarm
 ;;
 
+(defun sachac-news-default-alarm ()
+  "The default alarm.
+Use the notify-send to send the alarm."
+  (shell-command (concat "notify-send --app-name \"Emacs: SachaC-news\""
+			 "\"Check the News!\"")) ) ;; defun
+
+(defcustom sachac-news-alarm-functions-hook '(sachac-news-default-alarm)
+  "The alarm functions.
+These functions are called when there are new news."
+  :type 'hook
+  :group 'sachac-news ) ;; defcustom
+
+(defun sachac-news-run-alarm-if-needed ()
+  "Run the alarm function."
+  (when (sachac-news-is-there-new-title-p)
+    (run-hooks sachac-news-alarm-functions-hook)) ) ;; defun
 
 ;;; sachac-news.el ends here
