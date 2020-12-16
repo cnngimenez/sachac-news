@@ -81,7 +81,10 @@ This is where the last updated date and other data is stored."
 
 
 (defun sachac-news-show-last-new ()
-  "Create a new buffer with the last new."
+  "Create a new buffer with the last new.
+
+Also update the last title displayed to the user (see
+`sachac-news-last-saved-title' variable."
   (interactive)
   (sachac-news-update-git)
   (with-current-buffer (find-file (sachac-news-git-index-org))
@@ -95,10 +98,49 @@ This is where the last updated date and other data is stored."
 	(goto-char (point-min))
 	
 	(save-excursion
+	  (sachac-news-update-last-saved-title)
 	  (sachac-news-fold-categories))
 	
 	(display-buffer (current-buffer))))
     (kill-buffer)) ) ;; defun
+
+;;
+;; --------------------
+;; Last saved title
+;;
+
+(defvar sachac-news-last-saved-title nil
+  "This is the last title saved on the data file.")
+
+(defun sachac-news-update-last-saved-title ()
+  "Save the last title into the data file."
+
+  (setq sachac-news-last-saved-title (sachac-news-get-last-title))
+  (sachac-news-save-data) ) ;; defun
+
+(defun sachac-news-get-last-title ()
+  "Get the first title founded."
+  (org-element-map (org-element-parse-buffer) 'headline
+    (lambda (element) (org-element-property :raw-value element))
+    nil t) ) ;; defun
+
+(defun sachac-news-is-there-new-title-p ()
+  "According to the last save, return t when a new post is found.
+
+Check against the last title parsed from the last news displayed to the user (
+`sachac-news-last-saved-title').  If a different title has been found at the
+begining of the document, then a new post is found."
+
+  (sachac-news-load-data-if-needed)
+  
+  (or (null sachac-news-last-saved-title)
+      (not (string-equal (sachac-news-get-last-title)
+			 sachac-news-last-saved-title))) ) ;; defun
+
+;;
+;; --------------------
+;; Data or config. load/save
+;;
 
 (defvar sachac-news-last-update nil
   "The last update date.")
@@ -111,15 +153,23 @@ important variables."
     (with-temp-buffer
       (insert-file-contents (sachac-news-dir-datafile))
       (let ((expr (read (buffer-string))))
-	(setq sachac-news-last-update (alist-get 'last-update expr))))) ) ;; defun
+	;; set the important variables
+	(setq sachac-news-last-update
+	      (alist-get 'last-update expr))
+	(setq sachac-news-last-saved-title
+	      (alist-get 'last-saved-title expr))
+	;; Return the expression loaded
+	expr))) ) ;; defun
 
 (defun sachac-news-save-data ()
   "Save some important variables into the data file.
 These variables can be loaded again with `sachac-news-load-data'."
   (with-temp-buffer
-    (insert (prin1-to-string
-	     (list (cons 'last-update sachac-news-last-update))))
-    (write-file (sachac-news-dir-datafile))) ) ;; defun
+    (let ((data (list (cons 'last-update sachac-news-last-update)
+		      (cons 'last-saved-title sachac-news-last-saved-title))))
+    (insert (prin1-to-string data))
+    (write-file (sachac-news-dir-datafile))
+    data)) ) ;; defun
 
 (defvar sachac-news-data-loaded nil
   "Has been the data loaded?") ;; defun
@@ -130,6 +180,10 @@ These variables can be loaded again with `sachac-news-load-data'."
     (sachac-news-load-data)
     (setq sachac-news-data-loaded t)) ) ;; defun
 
+;;
+;; --------------------
+;; Git clone/update
+;;
 
 (defun sachac-news-update-last-update ()
   "Update the `sachac-news-last-update' date with the current date."
@@ -143,7 +197,6 @@ These variables can be loaded again with `sachac-news-load-data'."
     (>= (- (calendar-absolute-from-gregorian (calendar-current-date))
 	  (calendar-absolute-from-gregorian sachac-news-last-update))
        1)) ) ;; defun
-
 
 (defun sachac-news-create-dirs ()
   "Create the needed directories to save data and the repository."
@@ -262,6 +315,10 @@ This function works on any Org file, even at the Emacs news' index.org."
     (sachac-news-fold-all-items
      (sachac-news-find-all-categories category-list))) ) ;; defun
 
+;;
+;; --------------------
+;; Alarm
+;;
 
 
 ;;; sachac-news.el ends here
