@@ -38,7 +38,8 @@
 (require 'cl-extra)
 
 (defgroup sachac-news nil
-  "Sacha Chua's Emacs news customizations")
+  "Sacha Chua's Emacs news customizations"
+  :group 'applications)
 
 (defun sachac-news-take-last-new ()
   "Take the portion of the org file with the last news."
@@ -151,25 +152,56 @@ These variables can be loaded again with `sachac-news-load-data'."
 
 
 (defun sachac-news-update-git (&optional force-update)
-  "Call git whenever a day has passed since the las update.
-If FORCE-UPDATE is t, then do not check if it passe a day."
+  "Call git whenever a day has passed since the last update.
+To avoid checking every time `sachac-news-is-time-for-update-p' is used to
+check if enough time has passed.
+
+If FORCE-UPDATE is t (or C-u is used interactively), then do not check if it
+ passed a day."
+  (interactive "P")
+
   (sachac-news-create-dirs)
   (sachac-news-load-data-if-needed)
-  (when (or force-update (sachac-news-is-time-for-update-p))
-    (message "Updating Sacha's news!")
-    (if (file-exists-p (sachac-news-git-index-org))
-	(shell-command (concat
-			"cd " (sachac-news-dir-git) "; "
-			"git update"))
-      (shell-command (concat
-		      "cd " (sachac-news-dir-git) "; "
-		      "git clone https://github.com/sachac/emacs-news.git")))
-    (sachac-news-update-last-update)) ) ;; defun
+  (if (or force-update (sachac-news-is-time-for-update-p))
+      (progn
+	(message "Updating Sacha's news!")
+	(if (file-exists-p (sachac-news-git-index-org))
+	    (shell-command (concat
+			    "cd " (sachac-news-dir-git) "; "
+			    "git update"))
+	  (shell-command (concat
+			  "cd " (sachac-news-dir-git) "; "
+			  "git clone https://github.com/sachac/emacs-news.git")))
+	(sachac-news-update-last-update))
+    (message "%s\n%s"
+	     "Not enough time passed to update and not forced."
+	     "To force update, use C-u M-x sachac-news-update-git.")) ) ;; defun
 
+(defun sachac-news-open-index-file ()
+  "Open the index.org file from the local repository.
+
+Update if needed and then open the index.org file.
+
+See `sachac-news-update-git' and `sachac-news-is-time-for-update-p' to learn
+how the update is done."
+  (interactive)
+  
+  (sachac-news-update-git)
+  (if (file-exists-p (sachac-news-git-index-org))
+      (find-file (sachac-news-git-index-org))
+    (message "%s\n%s"
+	     "Index file not found! Did something wrong happen?"
+	     "See `sachac-news-update-git'.")) ) ;; defun
+
+
+;;
+;; --------------------
+;; Folding categories
+;;
 
 (defun sachac-news-find-all-categories (category-regexps &optional org-element)
-  "Find the paragraph that matches with the CATEGORY-REGEXPS regexp.
-The parameter ORG-ELEMENT is the returned element from 
+  "Match paragraph with the CATEGORY-REGEXPS regexp.
+The parameter ORG-ELEMENT is the returned element from
 `org-element-parse-buffer' or `org-element-at-point'.
 
 Returns a list of org-element of type 'item found in the index.org."
@@ -198,7 +230,7 @@ Returns a list of org-element of type 'item found in the index.org."
 (defun sachac-news-fold-all-items (item-list)
   "Fold all items from ITEM-LIST.
 
-The ITEM-LIST parameter is a list of org element. 
+The ITEM-LIST parameter is a list of org element.
 `org-element-type' should return 'item when called for each item in ITEM-LIST."
 
   (cl-map 'list
@@ -229,6 +261,7 @@ This function works on any Org file, even at the Emacs news' index.org."
 			 sachac-news-fold-category-regexp-list)))
     (sachac-news-fold-all-items
      (sachac-news-find-all-categories category-list))) ) ;; defun
+
 
 
 ;;; sachac-news.el ends here
