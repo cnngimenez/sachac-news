@@ -386,4 +386,30 @@ These functions are called when there are new news."
   (when (sachac-news-is-there-new-title-p)
     (run-hooks 'sachac-news-alarm-functions-hook)) ) ;; defun
 
+;;
+;; --------------------
+;; Timer
+;;
+
+(defvar sachac-news-timer nil
+  "A timer object used to update the local git repository.")
+
+(defun sachac-news-timer-function ()
+  "The function used by the timer."
+  (message "SachaC-news: Timer call for update news!")
+  (sachac-news-update-git t)
+  (sachac-news-set-timer) ) ;; defun
+
+
+(defun sachac-news-set-timer ()
+  "Set the timer to download the git repository every day."
+  (setq sachac-news-timer (run-at-time "1 day" nil
+				       #'sachac-news-timer-function)) ) ;; defun
+
+(defun sachac-news-cancel-timer ()
+  "Stop and cancel the timer."
+  (when (timerp sachac-news-timer)
+    (cancel-timer sachac-news-timer)) ) ;; defun
+
+
 ;;; sachac-news.el ends here
