@@ -41,13 +41,27 @@
   "Sacha Chua's Emacs news customizations"
   :group 'applications)
 
-(defun sachac-news-take-last-new ()
-  "Take the portion of the org file with the last news."
-  (goto-char (point-min))
-  (search-forward-regexp "^\\*\\* .* Emacs news")
-  (let ((sachac-news-title (org-element-at-point)))
-    (buffer-substring-no-properties (org-element-property :begin sachac-news-title)
-				    (org-element-property :end sachac-news-title))) ) ;; defun
+(defconst sachac-news-title-regexp
+  "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
+  "Regexp used to find news titles in the index.org file." ) ;; defconst
+
+(defun sachac-news-take-last-new (&optional use-index-org)
+  "Take the portion of the org file with the last news in the current buffer.
+
+If USE-INDEX-ORG is t, then load the index.org file.  Else, use the current
+buffer as if it is the index.org."
+
+  (if use-index-org
+      (with-temp-buffer
+	(insert-file-contents (sachac-news-git-index-org))
+	(sachac-news-take-last-new nil) )
+    (progn
+      (goto-char (point-min))
+      (search-forward-regexp sachac-news-title-regexp)
+      (let ((sachac-news-title (org-element-at-point)))
+	(buffer-substring-no-properties
+	 (org-element-property :begin sachac-news-title)
+	 (org-element-property :end sachac-news-title))))) ) ;; defun
 
 (defcustom sachac-news-data-directory (concat user-emacs-directory
 					     "sachac/")
@@ -87,24 +101,22 @@ Also update the last title displayed to the user (see
 `sachac-news-last-saved-title' variable."
   (interactive)
   (sachac-news-update-git)
-  (with-current-buffer (find-file (sachac-news-git-index-org))
-    (let ((str (sachac-news-take-last-new)))
-      (with-current-buffer (get-buffer-create "*last-news*")
-	(org-mode)
+  (let ((str (sachac-news-take-last-new t)))
+    (with-current-buffer (get-buffer-create "*last-news*")
+      (org-mode)
 
-	(delete-region (point-min) (point-max))
-	(insert str)
-
-	(goto-char (point-min))
+      (delete-region (point-min) (point-max))
+      (insert str)
+      
+      (goto-char (point-min))
 	
-	(save-excursion
-	  (sachac-news-run-alarm-if-needed)
+      (save-excursion
+	(sachac-news-run-alarm-if-needed)
 	  
-	  (sachac-news-update-last-saved-title)
-	  (sachac-news-fold-categories))
+	(sachac-news-update-last-saved-title)
+	(sachac-news-fold-categories))
 	
-	(display-buffer (current-buffer))))
-    (kill-buffer)) ) ;; defun
+      (display-buffer (current-buffer)))) ) ;; defun
 
 ;;
 ;; --------------------
@@ -121,23 +133,35 @@ Also update the last title displayed to the user (see
   (sachac-news-save-data) ) ;; defun
 
 (defun sachac-news-get-last-title ()
-  "Get the first title founded."
-  (org-element-map (org-element-parse-buffer) 'headline
-    (lambda (element) (org-element-property :raw-value element))
-    nil t) ) ;; defun
+  "Get the first title founded in the current buffer.
 
-(defun sachac-news-is-there-new-title-p ()
+First, `sachac-news-take-last-new' should be called."
+    (org-element-map (org-element-parse-buffer) 'headline
+      (lambda (element) (org-element-property :raw-value element))
+      nil t) ) ;; defun
+
+(defun sachac-news-is-there-new-title-p (&optional use-current-buffer)
   "According to the last save, return t when a new post is found.
 
 Check against the last title parsed from the last news displayed to the user (
 `sachac-news-last-saved-title').  If a different title has been found at the
-begining of the document, then a new post is found."
+begining of the document, then a new post is found.
+
+If USE-CURRENT-BUFFER is t, then the current buffer is considered to be the
+last news buffer.  Else, open the index.org and retrieve the last news."
 
   (sachac-news-load-data-if-needed)
-  
-  (or (null sachac-news-last-saved-title)
-      (not (string-equal (sachac-news-get-last-title)
-			 sachac-news-last-saved-title))) ) ;; defun
+
+  (let ((last-title (if use-current-buffer
+			(sachac-news-get-last-title)
+		      (with-temp-buffer
+			(insert (sachac-news-take-last-new t))
+				(goto-char (point-min))
+				(sachac-news-get-last-title)))))
+	     
+    (or (null sachac-news-last-saved-title)
+	(not (string-equal last-title
+			   sachac-news-last-saved-title)))) ) ;; defun
 
 ;;
 ;; --------------------
@@ -382,7 +406,7 @@ These functions are called when there are new news."
   :group 'sachac-news ) ;; defcustom
 
 (defun sachac-news-run-alarm-if-needed ()
-  "Run the alarm function."
+  "Run the alarm hook functions if there is a new post ."
   (when (sachac-news-is-there-new-title-p)
     (run-hooks 'sachac-news-alarm-functions-hook)) ) ;; defun
 
