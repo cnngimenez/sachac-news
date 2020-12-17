@@ -98,6 +98,8 @@ Also update the last title displayed to the user (see
 	(goto-char (point-min))
 	
 	(save-excursion
+	  (sachac-news-run-alarm-if-needed)
+	  
 	  (sachac-news-update-last-saved-title)
 	  (sachac-news-fold-categories))
 	
@@ -320,13 +322,60 @@ This function works on any Org file, even at the Emacs news' index.org."
 ;; Alarm
 ;;
 
-(defun sachac-news-default-alarm ()
+(defun sachac-news-default-notify-alarm ()
   "The default alarm.
 Use the notify-send to send the alarm."
-  (shell-command (concat "notify-send --app-name \"Emacs: SachaC-news\""
-			 "\"Check the News!\"")) ) ;; defun
+  (shell-command (concat "notify-send"
+			 " --app-name=\"Emacs: SachaC-news\""
+			 " \"Check the News!\"")) ) ;; defun
 
-(defcustom sachac-news-alarm-functions-hook '(sachac-news-default-alarm)
+(defcustom sachac-news-alarm-sound-file
+  "/usr/share/sounds/freedesktop/stereo/bell.oga"
+  "The path to a sound file.
+If the value is nil or the file does not exists, the `ding' function is used.
+
+See `sachac-news-default-sound-alarm' function."
+  :type 'file
+  :group 'sachac-news) ;; defcustom
+
+(defcustom sachac-news-alarm-sound-programs
+  '(("mpv" . "--really-quiet %s")
+    ("mplayer" . "%s") ("ogg123" . "%s"))
+  "The program name and arguments to execute the sound file.
+The first %s would be expanded with the sound file name.  If none of these
+programs is founded on the system, the `ding' function will be used.  The
+first program founded is used.
+
+This variable is used by `sachac-news-default-sound-alarm' function."
+  :type '(alist :key-type string :value-type string)
+  :group 'sachac-news ) ;; defcustom
+
+(defun sachac-news-default-sound-alarm ()
+  "The default sound alarm.
+If the `sachac-news-alarm-sound-file' and any of the
+`sachac-news-alarm-sound-program' exists, then play it, else use a beep sound
+as an alarm.
+
+The first program founded on your system is used.  `ding' function will be used
+as fallback."
+  (let ((program-data
+	 (cl-some (lambda (program)
+		    (let ((program-path (executable-find (car program))))
+		      (when program-path
+			(list program-path (cdr program)))))
+		  sachac-news-alarm-sound-programs)))
+    (if (and program-data
+	     (file-exists-p sachac-news-alarm-sound-file))
+	(apply #'start-process
+	       "sachac-news-sound-alarm" "tt"
+	       (car program-data)
+	       (split-string
+		(format (cadr program-data) sachac-news-alarm-sound-file)))
+      (ding t))) ) ;; defun
+
+(defcustom sachac-news-alarm-functions-hook
+  '(sachac-news-default-notify-alarm
+    sachac-news-default-sound-alarm)
   "The alarm functions.
 These functions are called when there are new news."
   :type 'hook
@@ -335,6 +384,6 @@ These functions are called when there are new news."
 (defun sachac-news-run-alarm-if-needed ()
   "Run the alarm function."
   (when (sachac-news-is-there-new-title-p)
-    (run-hooks sachac-news-alarm-functions-hook)) ) ;; defun
+    (run-hooks 'sachac-news-alarm-functions-hook)) ) ;; defun
 
 ;;; sachac-news.el ends here
