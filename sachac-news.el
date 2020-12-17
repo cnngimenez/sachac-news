@@ -249,8 +249,8 @@ If FORCE-UPDATE is t (or C-u is used interactively), then do not check if it
 	(message "Updating Sacha's news!")
 	(if (file-exists-p (sachac-news-git-index-org))
 	    (shell-command (concat
-			    "cd " (sachac-news-dir-git) "; "
-			    "git update"))
+			    "cd " (sachac-news-dir-git) "/emacs-news ; "
+			    "git pull") "gitoutput" "giterror")
 	  (shell-command (concat
 			  "cd " (sachac-news-dir-git) "; "
 			  "git clone https://github.com/sachac/emacs-news.git")))
@@ -394,7 +394,7 @@ as fallback."
     (if (and program-data
 	     (file-exists-p sachac-news-alarm-sound-file))
 	(apply #'start-process
-	       "sachac-news-sound-alarm" "tt"
+	       "sachac-news-sound-alarm" nil
 	       (car program-data)
 	       (split-string
 		(format (cadr program-data) sachac-news-alarm-sound-file)))
