@@ -4,17 +4,22 @@ So, why not create an Emacs command to download all news and show the latests on
 
 Well, this Elisp code can do that and a little more:
 
-+Every day do:+ (not yet! WIP)
+Every day do:
 - Clone or update Sacha Chua's repository in your computer.
 - Get the latest new.
-- +Alert if there is a new blog post (a new Org-mode header).+ (not yet! WIP)
+- Alert if there is a new blog post (a new header in the index.org).
 - Fold the categories that you don't want to see first.
 
 * Requirements
 The ~git~ command must be available at the terminal. 
 
+- ~notify-send~ is used to alert on new posts. This is optional.
+- ~mpv~, ~mplayer~ or ~ogg123~ to alert with sounds. This is optional and can be configured to use another sound player.
+
 * Usage
 Load the elisp file and call the ~M-x sachac-news-show-last-new~ to start downloading and getting the last new. The code will execute the proper git command.
+
+A timer is setted once per day to update the local data and alert the user if a new post is detected. 
 
 * Fold unwanted categories
 You can customize [[help:sachac-news-fold-category-regexp-list][sachac-news-fold-category-regexp-list]] variable with the matching text of the section you want to see folded.
