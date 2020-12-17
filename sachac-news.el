@@ -132,14 +132,20 @@ Also update the last title displayed to the user (see
   (setq sachac-news-last-saved-title (sachac-news-get-last-title))
   (sachac-news-save-data) ) ;; defun
 
-(defun sachac-news-get-last-title ()
+(defun sachac-news-get-last-title (&optional use-current-buffer)
   "Get the first title founded in the current buffer.
 
-First, `sachac-news-take-last-new' should be called."
-    (org-element-map (org-element-parse-buffer) 'headline
-      (lambda (element) (org-element-property :raw-value element))
-      nil t) ) ;; defun
-
+If USE-CURRENT-BUFFER is nil, then load the index.org file and use it to get
+the last title.  Else, if t, use the current buffer, but remember to call
+`sachac-news-take-last-new' first."
+  (if use-current-buffer
+      (org-element-map (org-element-parse-buffer) 'headline
+	(lambda (element) (org-element-property :raw-value element))
+	nil t)
+    (with-temp-buffer
+      (insert (sachac-news-take-last-new t))
+      (sachac-news-get-last-title t))) ) ;; defun
+ 
 (defun sachac-news-is-there-new-title-p (&optional use-current-buffer)
   "According to the last save, return t when a new post is found.
 
@@ -153,11 +159,8 @@ last news buffer.  Else, open the index.org and retrieve the last news."
   (sachac-news-load-data-if-needed)
 
   (let ((last-title (if use-current-buffer
-			(sachac-news-get-last-title)
-		      (with-temp-buffer
-			(insert (sachac-news-take-last-new t))
-				(goto-char (point-min))
-				(sachac-news-get-last-title)))))
+			(sachac-news-get-last-title t)
+		      (sachac-news-get-last-title))))
 	     
     (or (null sachac-news-last-saved-title)
 	(not (string-equal last-title
