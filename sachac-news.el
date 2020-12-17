@@ -250,7 +250,7 @@ If FORCE-UPDATE is t (or C-u is used interactively), then do not check if it
 	(if (file-exists-p (sachac-news-git-index-org))
 	    (shell-command (concat
 			    "cd " (sachac-news-dir-git) "/emacs-news ; "
-			    "git pull") "gitoutput" "giterror")
+			    "git pull"))
 	  (shell-command (concat
 			  "cd " (sachac-news-dir-git) "; "
 			  "git clone https://github.com/sachac/emacs-news.git")))
