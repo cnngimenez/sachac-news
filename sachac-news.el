@@ -91,6 +91,13 @@ This is where the last updated date and other data is stored."
   :type 'string
   :group 'sachac-news)
 
+(defcustom sachac-news-update-hours-wait 24
+  "The amount of hours when the git clone/pull must wait before be called.
+
+Default is 24 hours.  Only positive values should be used."
+  :type 'integer
+  :group 'sachac-news ) ;; defcustom
+
 (defun sachac-news-dir-git ()
   "Return the complete git path."
   (concat sachac-news-data-directory "/" sachac-news-git-dirname) ) ;; defun
@@ -251,6 +258,9 @@ These variables can be loaded again with `sachac-news-load-data'."
 	  (number-to-string (sachac-news-get-update-time-elapsed))
 	  "minutes") ) ;; defun
 
+(defun sachac-news-get-update-wait-seconds ()
+  "Get the `sachac-news-update-hours-wait' in seconds."
+  (* sachac-news-update-hours-wait 60 60) ) ;; defun
 
 (defun sachac-news-show-update-time ()
   "Display the time left for the next update."
@@ -266,27 +276,26 @@ These variables can be loaded again with `sachac-news-load-data'."
 Return 0 if `sachac-news-last-update' is nil (no lastt update time has been
 loaded)."
   (if sachac-news-timer-setted-time
-      (- (+ sachac-news-timer-setted-time 86400)
+      (- (+ sachac-news-timer-setted-time (sachac-news-get-update-wait-seconds))
 	 (time-convert (current-time) 'integer))
     0) ) ;; defun
 
 (defun sachac-news-get-update-time-elapsed ()
   "Return the minutes elapsed since the last update.
 
-Return 0 if `sachac-news-last-update' is nil (no lastt update time has been
-loaded)."
+Return the numbre of seconds after the maximum wait + 1 if
+`sachac-news-last-update' is nil (no last update time has been loaded)."
   (if sachac-news-last-update
     (/ (- (time-convert (current-time) 'integer)
 	  sachac-news-last-update)
        60)
-    0) ) ;; defun
+    (+ (/ (sachac-news-get-update-wait-seconds) 60) 1)) ) ;; defun
 
 (defun sachac-news-is-time-for-update-p ()
   "Check if a day has passed since the last update."
   (if sachac-news-last-update
       (>= (sachac-news-get-update-time-elapsed)
-	 ;; 1 day * 24 hours/day * 60 mins/hour * 60 secs/min = 86400
-	 86400 )
+	 (sachac-news-get-update-wait-seconds) )
     t) ) ;; defun
 
 (defun sachac-news-create-dirs ()
@@ -564,11 +573,16 @@ These functions are called when there are new news."
 
 
 (defun sachac-news-set-timer ()
-  "Set the timer to download the git repository every day."
+  "Set the timer to download the git repository.
+
+Set the timer for executing on `sachac-news-update-hours-wait' hours."
   (sachac-news-deactivate-timer) ;; just in case there's a timer running
   (setq sachac-news-timer-setted-time (time-convert (current-time) 'integer))
-  (setq sachac-news-timer (run-at-time "1 day" nil
-				       #'sachac-news-timer-function)) ) ;; defun
+  (setq sachac-news-timer
+	(run-at-time
+	 (concat (number-to-string sachac-news-update-hours-wait) "hours")
+		     nil
+		     #'sachac-news-timer-function)) ) ;; defun
 
 (defun sachac-news-deactivate-timer ()
   "Stop and cancel the timer."
