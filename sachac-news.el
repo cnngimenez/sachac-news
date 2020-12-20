@@ -45,6 +45,7 @@
   "Path or git command name.
 
 Valid values are \"/usr/bin/git\" or \"git\" if it is in the current PATH."
+  :type 'string
   :group 'sachac-news) ;; defcustom
 
 (defconst sachac-news-title-regexp
@@ -99,14 +100,10 @@ This is where the last updated date and other data is stored."
   "Return the index.org path on the git directory."
   (concat (sachac-news-dir-git) "/emacs-news/index.org") ) ;; defun
 
-
-(defun sachac-news-show-last-new ()
-  "Create a new buffer with the last new.
-
-Also update the last title displayed to the user (see
-`sachac-news-last-saved-title' variable."
-  (interactive)
-  (sachac-news-update-git)
+(defun sachac-news--show-last-new-internal ()
+  "Show the last news.
+This is used after the update sentinel is executed.
+See `sachac-news-show-last-new'."
   (let ((str (sachac-news-take-last-new t)))
     (with-current-buffer (get-buffer-create "*last-news*")
       (org-mode)
@@ -123,6 +120,17 @@ Also update the last title displayed to the user (see
 	(sachac-news-fold-categories))
 	
       (display-buffer (current-buffer)))) ) ;; defun
+
+
+(defun sachac-news-show-last-new ()
+  "Create a new buffer with the last new.
+
+Also update the last title displayed to the user (see
+`sachac-news-last-saved-title' variable."
+  (interactive)
+  (sachac-news-update-git nil
+			  #'sachac-news--show-last-new-internal
+			  #'sachac-news--show-last-new-internal)) ;; defun
 
 ;;
 ;; --------------------
@@ -238,35 +246,96 @@ These variables can be loaded again with `sachac-news-load-data'."
   (make-directory sachac-news-data-directory t)
   (make-directory (sachac-news-dir-git) t) ) ;; defun
 
-(defun sachac-news-update-git (&optional force-update)
-  "Call git whenever a day has passed since the last update.
+(defvar sachac-news--git-hook nil
+  "Internal hook.  This is seeted by the git update functions.
+This hook is called when the sentinel found a finished status on the async git
+ process.  After hook call, it is setted to nil.
+
+See `sachac-news--git-sentinel' and `sachac-news-update-git'.")
+(defvar sachac-news--git-process nil
+  "The git process.
+If the git process is running, this variable contains the process object.
+Else, this variable contains nil.")
+
+(defun sachac-news--git-sentinel (_process event)
+  "Git sentinel.
+If the git process endend correctly, update last updated date and  call
+functions from `sachac-news--git-hook'.
+If the git process sent another signal or endend unexpectedly, just report it.
+
+When the sentinel ends, reset all variables refering to the git process and
+hooks.
+
+EVENT is the signal received from the process."
+  (cond
+   ((string-equal event "finished\n")
+    (sachac-news-update-last-update)
+    (run-hooks sachac-news--git-hook)
+    )
+   (t (message "SachaC-news's git sentinel: Something wrong happened. Receive %s event from git async process."
+	       event)))
+
+  ;; Reset variables
+  (setq sachac-news--git-hook nil
+	sachac-news--git-process nil)) ;; defun
+
+(defun sachac-news--git-update (git-program &optional func-call-after)
+  "Do the git pull.
+GIT-PROGRAM is the git PATH.
+
+FUNC-CALL-AFTER is a function called after the git process endend successfully."
+
+  (unless sachac-news--git-process
+    ;; No process exists, then its fine to continue.
+    (when func-call-after
+      (add-hook 'sachac-news--git-hook func-call-after))
+    (setq sachac-news--git-process
+	  (if (file-exists-p (sachac-news-git-index-org))
+	      (start-process-shell-command "sachac-news-git-pull"
+					   "*sachac-news-git*"
+					   (concat
+					    "cd " (sachac-news-dir-git) "/emacs-news ; "
+					    git-program
+					    " pull"))
+	    (start-process-shell-command "sachac-news-git-clone"
+					 "*sachac-news-git*"
+					 (concat
+					"cd " (sachac-news-dir-git) "; "
+					git-program " clone https://github.com/sachac/emacs-news.git"))))
+    (set-process-sentinel sachac-news--git-process #'sachac-news--git-sentinel)) ) ;; defun
+
+
+(defun sachac-news-update-git (&optional force-update
+				     callback-after-update
+				     callback-if-no-update)
+  "Call git asyncronously whenever a day has passed since the last update.
 To avoid checking every time `sachac-news-is-time-for-update-p' is used to
 check if enough time has passed.
 
 If FORCE-UPDATE is t (or C-u is used interactively), then do not check if it
- passed a day."
+ passed a day.
+
+CALLBACK-AFTER-UPDATE is called as soon as the git process is finished.
+CALLBACK-IF-NO-UPDATE is called when there's no need for use the git
+pull/clone."
   (interactive "P")
 
   (sachac-news-create-dirs)
   (sachac-news-load-data-if-needed)
+
   (let ((git-program (executable-find sachac-news-git-command)))
     (if git-program
 	;; Git program founded
 	(if (or force-update (sachac-news-is-time-for-update-p))
 	    (progn
 	      (message "Updating Sacha's news!")
-	      (if (file-exists-p (sachac-news-git-index-org))
-		  (shell-command (concat
-				  "cd " (sachac-news-dir-git) "/emacs-news ; "
-				  git-program
-				  " pull"))
-		(shell-command (concat
-				"cd " (sachac-news-dir-git) "; "
-				git-program " clone https://github.com/sachac/emacs-news.git")))
-	      (sachac-news-update-last-update))
-	  (message "%s\n%s"
-		   "Not enough time passed to update and not forced."
-		   "To force update, use C-u M-x sachac-news-update-git."))
+	      (sachac-news--git-update git-program callback-after-update))
+	  (progn
+	    (message "%s\n%s"
+		     "Not enough time passed to update and not forced."
+		     "To force update, use C-u M-x sachac-news-update-git.")
+	    (when callback-if-no-update
+	      (funcall callback-if-no-update))))
       ;; Git program not founded
       (message "%s %s\n%s\n%s"
 	       "The Git program has not been founded!"
@@ -440,7 +509,7 @@ These functions are called when there are new news."
   "The function used by the timer."
   (message "SachaC-news: Timer call for update news!")
 
-  (sachac-news-update-git t)
+  (sachac-news-update-git t #'sachac-news-show-last-new)
   (sachac-news-run-alarm-if-needed)
 
   (sachac-news-set-timer) ) ;; defun
