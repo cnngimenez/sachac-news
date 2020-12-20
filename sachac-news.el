@@ -52,6 +52,10 @@ Valid values are \"/usr/bin/git\" or \"git\" if it is in the current PATH."
   "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
   "Regexp used to find news titles in the index.org file." ) ;; defconst
 
+(defvar sachac-news-timer-setted-time 0
+  "At what time the timer has been setted?
+See `sachac-news-set-timer'.")
+
 (defun sachac-news-take-last-new (&optional use-index-org)
   "Take the portion of the org file with the last news in the current buffer.
 
@@ -235,13 +239,20 @@ These variables can be loaded again with `sachac-news-load-data'."
 
 (defun sachac-news-update-time-str ()
   "Return a string with the last time and the amount of time left."
-  (format "Last time updated: %s\nTime left: %s %s"
-	  (format-time-string "%D %T" sachac-news-last-update)
+  (format "Last time updated: %s\nNext update %s\nTime left: %s %s\nTime elapsed: %s %s"
+	  (if sachac-news-last-update
+	      (format-time-string "%D %T" sachac-news-last-update)
+	    "No last update")
+	  (if sachac-news-timer-setted-time
+	      (format-time-string "%D %T" sachac-news-timer-setted-time)
+	    "No timer setted")
+	  (number-to-string (sachac-news-get-update-time-left))
+	  "minutes"
 	  (number-to-string (sachac-news-get-update-time-elapsed))
 	  "minutes") ) ;; defun
 
 
-(defun sachac-news-update-time-left ()
+(defun sachac-news-show-update-time ()
   "Display the time left for the next update."
   (interactive)
   (sachac-news-load-data-if-needed)
@@ -249,9 +260,18 @@ These variables can be loaded again with `sachac-news-load-data'."
       (message (sachac-news-update-time-str))
     (message "Git has not been called before.")) ) ;; defun
 
+(defun sachac-news-get-update-time-left ()
+  "Return the minutes left for the next update.
+
+Return 0 if `sachac-news-last-update' is nil (no lastt update time has been
+loaded)."
+  (if sachac-news-timer-setted-time
+      (- (+ sachac-news-timer-setted-time 86400)
+	 (time-convert (current-time) 'integer))
+    0) ) ;; defun
 
 (defun sachac-news-get-update-time-elapsed ()
-  "Return the minutes left for the next update.
+  "Return the minutes elapsed since the last update.
 
 Return 0 if `sachac-news-last-update' is nil (no lastt update time has been
 loaded)."
@@ -264,8 +284,7 @@ loaded)."
 (defun sachac-news-is-time-for-update-p ()
   "Check if a day has passed since the last update."
   (if sachac-news-last-update
-      (>= (- (time-convert (current-date) 'integer)
-	    sachac-news-last-update)
+      (>= (sachac-news-get-update-time-elapsed)
 	 ;; 1 day * 24 hours/day * 60 mins/hour * 60 secs/min = 86400
 	 86400 )
     t) ) ;; defun
@@ -547,6 +566,7 @@ These functions are called when there are new news."
 (defun sachac-news-set-timer ()
   "Set the timer to download the git repository every day."
   (sachac-news-deactivate-timer) ;; just in case there's a timer running
+  (setq sachac-news-timer-setted-time (time-convert (current-time) 'integer))
   (setq sachac-news-timer (run-at-time "1 day" nil
 				       #'sachac-news-timer-function)) ) ;; defun
 
