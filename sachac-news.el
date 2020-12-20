@@ -41,6 +41,12 @@
   "Sacha Chua's Emacs news customizations"
   :group 'applications)
 
+(defcustom sachac-news-git-command "git"
+  "Path or git command name.
+
+Valid values are \"/usr/bin/git\" or \"git\" if it is in the current PATH."
+  :group 'sachac-news) ;; defcustom
+
 (defconst sachac-news-title-regexp
   "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
   "Regexp used to find news titles in the index.org file." ) ;; defconst
@@ -232,7 +238,6 @@ These variables can be loaded again with `sachac-news-load-data'."
   (make-directory sachac-news-data-directory t)
   (make-directory (sachac-news-dir-git) t) ) ;; defun
 
-
 (defun sachac-news-update-git (&optional force-update)
   "Call git whenever a day has passed since the last update.
 To avoid checking every time `sachac-news-is-time-for-update-p' is used to
@@ -244,20 +249,30 @@ If FORCE-UPDATE is t (or C-u is used interactively), then do not check if it
 
   (sachac-news-create-dirs)
   (sachac-news-load-data-if-needed)
-  (if (or force-update (sachac-news-is-time-for-update-p))
-      (progn
-	(message "Updating Sacha's news!")
-	(if (file-exists-p (sachac-news-git-index-org))
-	    (shell-command (concat
-			    "cd " (sachac-news-dir-git) "/emacs-news ; "
-			    "git pull"))
-	  (shell-command (concat
-			  "cd " (sachac-news-dir-git) "; "
-			  "git clone https://github.com/sachac/emacs-news.git")))
-	(sachac-news-update-last-update))
-    (message "%s\n%s"
-	     "Not enough time passed to update and not forced."
-	     "To force update, use C-u M-x sachac-news-update-git.")) ) ;; defun
+  (let ((git-program (executable-find sachac-news-git-command)))
+    (if git-program
+	;; Git program founded
+	(if (or force-update (sachac-news-is-time-for-update-p))
+	    (progn
+	      (message "Updating Sacha's news!")
+	      (if (file-exists-p (sachac-news-git-index-org))
+		  (shell-command (concat
+				  "cd " (sachac-news-dir-git) "/emacs-news ; "
+				  git-program
+				  " pull"))
+		(shell-command (concat
+				"cd " (sachac-news-dir-git) "; "
+				git-program " clone https://github.com/sachac/emacs-news.git")))
+	      (sachac-news-update-last-update))
+	  (message "%s\n%s"
+		   "Not enough time passed to update and not forced."
+		   "To force update, use C-u M-x sachac-news-update-git."))
+      ;; Git program not founded
+      (message "%s %s\n%s\n%s"
+	       "The Git program has not been founded!"
+	       "SachaC-news cannot download news without it!"
+	       "Please install it in our system or customize the variable:"
+	       "M-x customize-option sachac-news-git-command"))) ) ;; defun
 
 (defun sachac-news-open-index-file ()
   "Open the index.org file from the local repository.
