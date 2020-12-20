@@ -48,6 +48,43 @@ Valid values are \"/usr/bin/git\" or \"git\" if it is in the current PATH."
   :type 'string
   :group 'sachac-news) ;; defcustom
 
+(defcustom sachac-news-fold-category-regexp-list '()
+  "A list of regexp strings of the matching categories that should be folded.
+
+The function `sachac-news-fold-categories' use this variable to find
+categories that the user wants to hide."
+  :type '(repeat regexp)
+  :group 'sachac-news) ;; defcustom
+
+(defcustom sachac-news-alarm-sound-file
+  "/usr/share/sounds/freedesktop/stereo/bell.oga"
+  "The path to a sound file.
+If the value is nil or the file does not exists, the `ding' function is used.
+
+See `sachac-news-default-sound-alarm' function."
+  :type 'file
+  :group 'sachac-news) ;; defcustom
+
+(defcustom sachac-news-alarm-sound-programs
+  '(("mpv" . "--really-quiet %s")
+    ("mplayer" . "%s") ("ogg123" . "%s"))
+  "The program name and arguments to execute the sound file.
+The first %s would be expanded with the sound file name.  If none of these
+programs is founded on the system, the `ding' function will be used.  The
+first program founded is used.
+
+This variable is used by `sachac-news-default-sound-alarm' function."
+  :type '(alist :key-type string :value-type string)
+  :group 'sachac-news ) ;; defcustom
+
+(defcustom sachac-news-alarm-functions-hook
+  '(sachac-news-default-notify-alarm
+    sachac-news-default-sound-alarm)
+  "The alarm functions.
+These functions are called when there are new news."
+  :type 'hook
+  :group 'sachac-news ) ;; defcustom
+
 (defconst sachac-news-title-regexp
   "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
   "Regexp used to find news titles in the index.org file." ) ;; defconst
@@ -55,6 +92,30 @@ Valid values are \"/usr/bin/git\" or \"git\" if it is in the current PATH."
 (defvar sachac-news-timer-setted-time 0
   "At what time the timer has been setted?
 See `sachac-news-set-timer'.")
+
+(defvar sachac-news-last-saved-title nil
+  "This is the last title saved on the data file.")
+
+(defvar sachac-news-last-update nil
+  "The last update date.")
+
+(defvar sachac-news-data-loaded nil
+  "Has been the data loaded?")
+
+(defvar sachac-news--git-hook nil
+  "Internal hook.  This is seeted by the git update functions.
+This hook is called when the sentinel found a finished status on the async git
+ process.  After hook call, it is setted to nil.
+
+See `sachac-news--git-sentinel' and `sachac-news-update-git'.")
+
+(defvar sachac-news--git-process nil
+  "The git process.
+If the git process is running, this variable contains the process object.
+Else, this variable contains nil.")
+
+(defvar sachac-news-timer nil
+  "A timer object used to update the local git repository.")
 
 (defun sachac-news-take-last-new (&optional use-index-org)
   "Take the portion of the org file with the last news in the current buffer.
@@ -137,7 +198,11 @@ See `sachac-news-show-last-new'."
   "Create a new buffer with the last new.
 
 Also update the last title displayed to the user (see
-`sachac-news-last-saved-title' variable."
+`sachac-news-last-saved-title' variable.
+
+Update the local git repository if the waiting time has passed (it is not
+forced).  See `sachac-news-update-git' function.  To change the waiting time
+see `sachac-news-update-hours-wait' variable."
   (interactive)
   (sachac-news-update-git nil
 			  #'sachac-news--show-last-new-internal
@@ -147,9 +212,6 @@ Also update the last title displayed to the user (see
 ;; --------------------
 ;; Last saved title
 ;;
-
-(defvar sachac-news-last-saved-title nil
-  "This is the last title saved on the data file.")
 
 (defun sachac-news-update-last-saved-title ()
   "Save the last title into the data file."
@@ -196,9 +258,6 @@ last news buffer.  Else, open the index.org and retrieve the last news."
 ;; Data or config. load/save
 ;;
 
-(defvar sachac-news-last-update nil
-  "The last update date.")
-
 (defun sachac-news-load-data ()
   "Update variables which values are in the configuration file.
 Evaluate the `sachac-news-data-file' file and use the result to fill some
@@ -224,9 +283,6 @@ These variables can be loaded again with `sachac-news-load-data'."
     (insert (prin1-to-string data))
     (write-file (sachac-news-dir-datafile))
     data)) ) ;; defun
-
-(defvar sachac-news-data-loaded nil
-  "Has been the data loaded?") ;; defun
 
 (defun sachac-news-load-data-if-needed ()
   "If the data has not been loaded yet, load it."
@@ -332,17 +388,6 @@ Return the numbre of seconds after the maximum wait + 1 if
   "Create the needed directories to save data and the repository."
   (make-directory sachac-news-data-directory t)
   (make-directory (sachac-news-dir-git) t) ) ;; defun
-
-(defvar sachac-news--git-hook nil
-  "Internal hook.  This is seeted by the git update functions.
-This hook is called when the sentinel found a finished status on the async git
- process.  After hook call, it is setted to nil.
-
-See `sachac-news--git-sentinel' and `sachac-news-update-git'.")
-(defvar sachac-news--git-process nil
-  "The git process.
-If the git process is running, this variable contains the process object.
-Else, this variable contains nil.")
 
 (defun sachac-news--git-sentinel (_process event)
   "Git sentinel.
@@ -494,14 +539,6 @@ The ITEM-LIST parameter is a list of org element.
 	     'folded))
 	  item-list)) ;; defun
 
-(defcustom sachac-news-fold-category-regexp-list '()
-  "A list of regexp strings of the matching categories that should be folded.
-
-The function `sachac-news-fold-categories' use this variable to find
-categories that the user wants to hide."
-  :type '(repeat regexp)
-  :group 'sachac-news) ;; defcustom
-
 (defun sachac-news-fold-categories (&optional category-regexp-list)
   "Fold all items that match the category regexps.
 
@@ -527,27 +564,6 @@ Use the notify-send to send the alarm."
 			 " --app-name=\"Emacs: SachaC-news\""
 			 " \"Check the News!\"")) ) ;; defun
 
-(defcustom sachac-news-alarm-sound-file
-  "/usr/share/sounds/freedesktop/stereo/bell.oga"
-  "The path to a sound file.
-If the value is nil or the file does not exists, the `ding' function is used.
-
-See `sachac-news-default-sound-alarm' function."
-  :type 'file
-  :group 'sachac-news) ;; defcustom
-
-(defcustom sachac-news-alarm-sound-programs
-  '(("mpv" . "--really-quiet %s")
-    ("mplayer" . "%s") ("ogg123" . "%s"))
-  "The program name and arguments to execute the sound file.
-The first %s would be expanded with the sound file name.  If none of these
-programs is founded on the system, the `ding' function will be used.  The
-first program founded is used.
-
-This variable is used by `sachac-news-default-sound-alarm' function."
-  :type '(alist :key-type string :value-type string)
-  :group 'sachac-news ) ;; defcustom
-
 (defun sachac-news-default-sound-alarm ()
   "The default sound alarm.
 If the `sachac-news-alarm-sound-file' and any of the
@@ -571,14 +587,6 @@ as fallback."
 		(format (cadr program-data) sachac-news-alarm-sound-file)))
       (ding t))) ) ;; defun
 
-(defcustom sachac-news-alarm-functions-hook
-  '(sachac-news-default-notify-alarm
-    sachac-news-default-sound-alarm)
-  "The alarm functions.
-These functions are called when there are new news."
-  :type 'hook
-  :group 'sachac-news ) ;; defcustom
-
 (defun sachac-news-run-alarm-if-needed ()
   "Run the alarm hook functions if there is a new post ."
   (when (sachac-news-is-there-new-title-p)
@@ -588,9 +596,6 @@ These functions are called when there are new news."
 ;; --------------------
 ;; Timer
 ;;
-
-(defvar sachac-news-timer nil
-  "A timer object used to update the local git repository.")
 
 (defun sachac-news-timer-function ()
   "The function used by the timer."
