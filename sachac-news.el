@@ -251,11 +251,12 @@ These variables can be loaded again with `sachac-news-load-data'."
 	      (format-time-string "%D %T" sachac-news-last-update)
 	    "No last update")
 	  (if sachac-news-timer-setted-time
-	      (format-time-string "%D %T" sachac-news-timer-setted-time)
+	      (format-time-string "%D %T" (+ sachac-news-timer-setted-time
+					     (* sachac-news-update-hours-wait 60 60)))
 	    "No timer setted")
-	  (number-to-string (sachac-news-get-update-time-left))
+	  (number-to-string (/ (sachac-news-get-update-time-left) 60))
 	  "minutes"
-	  (number-to-string (sachac-news-get-update-time-elapsed))
+	  (number-to-string (/ (sachac-news-get-update-time-elapsed) 60))
 	  "minutes") ) ;; defun
 
 (defun sachac-news-get-update-wait-seconds ()
@@ -271,7 +272,7 @@ These variables can be loaded again with `sachac-news-load-data'."
     (message "Git has not been called before.")) ) ;; defun
 
 (defun sachac-news-get-update-time-left ()
-  "Return the minutes left for the next update.
+  "Return the seconds left for the next update.
 
 Return 0 if `sachac-news-last-update' is nil (no lastt update time has been
 loaded)."
@@ -281,15 +282,14 @@ loaded)."
     0) ) ;; defun
 
 (defun sachac-news-get-update-time-elapsed ()
-  "Return the minutes elapsed since the last update.
+  "Return the seconds elapsed since the last update.
 
 Return the numbre of seconds after the maximum wait + 1 if
 `sachac-news-last-update' is nil (no last update time has been loaded)."
   (if sachac-news-last-update
-    (/ (- (time-convert (current-time) 'integer)
-	  sachac-news-last-update)
-       60)
-    (+ (/ (sachac-news-get-update-wait-seconds) 60) 1)) ) ;; defun
+      (- (time-convert (current-time) 'integer)
+	 sachac-news-last-update)
+    (+ (sachac-news-get-update-wait-seconds) 1)) ) ;; defun
 
 (defun sachac-news-is-time-for-update-p ()
   "Check if a day has passed since the last update."
