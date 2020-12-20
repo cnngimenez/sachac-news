@@ -230,16 +230,45 @@ These variables can be loaded again with `sachac-news-load-data'."
 
 (defun sachac-news-update-last-update ()
   "Update the `sachac-news-last-update' date with the current date."
-  (setq sachac-news-last-update (calendar-current-date))
+  (setq sachac-news-last-update (time-convert (current-time) 'integer))
   (sachac-news-save-data)) ;; defun
+
+(defun sachac-news-update-time-str ()
+  "Return a string with the last time and the amount of time left."
+  (format "Last time updated: %s\nTime left: %s %s"
+	  (format-time-string "%D %T" sachac-news-last-update)
+	  (number-to-string (sachac-news-get-update-time-elapsed))
+	  "minutes") ) ;; defun
+
+
+(defun sachac-news-update-time-left ()
+  "Display the time left for the next update."
+  (interactive)
+  (sachac-news-load-data-if-needed)
+  (if sachac-news-last-update
+      (message (sachac-news-update-time-str))
+    (message "Git has not been called before.")) ) ;; defun
+
+
+(defun sachac-news-get-update-time-elapsed ()
+  "Return the minutes left for the next update.
+
+Return 0 if `sachac-news-last-update' is nil (no lastt update time has been
+loaded)."
+  (if sachac-news-last-update
+    (/ (- (time-convert (current-time) 'integer)
+	  sachac-news-last-update)
+       60)
+    0) ) ;; defun
 
 (defun sachac-news-is-time-for-update-p ()
   "Check if a day has passed since the last update."
-  (if (not sachac-news-last-update)
-      t
-    (>= (- (calendar-absolute-from-gregorian (calendar-current-date))
-	  (calendar-absolute-from-gregorian sachac-news-last-update))
-       1)) ) ;; defun
+  (if sachac-news-last-update
+      (>= (- (time-convert (current-date) 'integer)
+	    sachac-news-last-update)
+	 ;; 1 day * 24 hours/day * 60 mins/hour * 60 secs/min = 86400
+	 86400 )
+    t) ) ;; defun
 
 (defun sachac-news-create-dirs ()
   "Create the needed directories to save data and the repository."
