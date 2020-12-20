@@ -7,7 +7,7 @@
 ;; Version: 0.1.0
 ;; Keywords: news
 ;; URL: https://github.com/cnngimenez/sachac-news
-;; Package-Requires: ((emacs"25.1"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -569,13 +569,14 @@ These functions are called when there are new news."
   (sachac-news-update-git t #'sachac-news-show-last-new)
   (sachac-news-run-alarm-if-needed)
 
-  (sachac-news-set-timer) ) ;; defun
+  (sachac-news-activate-timer) ) ;; defun
 
 
-(defun sachac-news-set-timer ()
+(defun sachac-news-activate-timer ()
   "Set the timer to download the git repository.
 
 Set the timer for executing on `sachac-news-update-hours-wait' hours."
+  (interactive)
   (sachac-news-deactivate-timer) ;; just in case there's a timer running
   (setq sachac-news-timer-setted-time (time-convert (current-time) 'integer))
   (setq sachac-news-timer
@@ -589,7 +590,8 @@ Set the timer for executing on `sachac-news-update-hours-wait' hours."
   (interactive)
   (when (timerp sachac-news-timer)
     (cancel-timer sachac-news-timer)
-    (setq sachac-news-timer nil)) ) ;; defun
+    (setq sachac-news-timer nil))
+  (setq sachac-news-timer-setted-time nil) ) ;; defun
 
 (defun sachac-news-timer-status ()
   "Is the timer setted or not?
@@ -599,6 +601,6 @@ Report the user about the timer status."
       (message "Timer is setted and running.")
     (message "Timer is deactivated")) ) ;; defun
 
-(sachac-news-set-timer)
+(sachac-news-activate-timer)
 
 ;;; sachac-news.el ends here
