@@ -246,17 +246,32 @@ These variables can be loaded again with `sachac-news-load-data'."
 
 (defun sachac-news-update-time-str ()
   "Return a string with the last time and the amount of time left."
-  (format "Last time updated: %s\nNext update %s\nTime left: %s %s\nTime elapsed: %s %s"
+  (format "Waiting time: %s hours
+-- Update --
+Last time updated: %s
+Time elapsed since update: %s %s
+Time left to enable update (unless forced): %s %s
+-- Timer --
+Setted at: %s
+Time left for automatic forced update: %s %s"
+
+	  (number-to-string sachac-news-update-hours-wait)
+
+	  ;; update
 	  (if sachac-news-last-update
 	      (format-time-string "%D %T" sachac-news-last-update)
 	    "No last update")
+	  (number-to-string (/ (sachac-news-get-update-time-elapsed) 60))
+	  "minutes"
+	  (number-to-string (/ (sachac-news-get-update-enable-time-left) 60))
+	  "minutes"
+
+	  ;; timer
 	  (if sachac-news-timer-setted-time
 	      (format-time-string "%D %T" (+ sachac-news-timer-setted-time
 					     (* sachac-news-update-hours-wait 60 60)))
 	    "No timer setted")
 	  (number-to-string (/ (sachac-news-get-update-time-left) 60))
-	  "minutes"
-	  (number-to-string (/ (sachac-news-get-update-time-elapsed) 60))
 	  "minutes") ) ;; defun
 
 (defun sachac-news-get-update-wait-seconds ()
@@ -272,12 +287,27 @@ These variables can be loaded again with `sachac-news-load-data'."
     (message "Git has not been called before.")) ) ;; defun
 
 (defun sachac-news-get-update-time-left ()
-  "Return the seconds left for the next update.
+  "Return the seconds left for the next scheduled update.
+This is according to the timer and if the timer is setted.
 
-Return 0 if `sachac-news-last-update' is nil (no lastt update time has been
-loaded)."
+Return 0 if `sachac-news-timer-setted-time' is nil (no timer has
+been setted)."
   (if sachac-news-timer-setted-time
       (- (+ sachac-news-timer-setted-time (sachac-news-get-update-wait-seconds))
+	 (time-convert (current-time) 'integer))
+    0) ) ;; defun
+
+(defun sachac-news-get-update-enable-time-left ()
+  "Return the seconds left for the next enabled update.
+This has no relation with the timer.
+
+When the returned value is zero or negative, calling `sachac-news-update-git'
+will actually call git clone/update, unless forced.
+
+Return 0 if `sachac-news-last-update' is nil (no last update time has been
+loaded)."
+  (if sachac-news-last-update
+      (- (+ sachac-news-last-update (sachac-news-get-update-wait-seconds))
 	 (time-convert (current-time) 'integer))
     0) ) ;; defun
 
