@@ -7,7 +7,7 @@
 ;; Version: 0.1.0
 ;; Keywords: news
 ;; URL: https://github.com/cnngimenez/sachac-news
-;; Package-Requires: ((emacs "25.1"))
+;; Package-Requires: ((emacs "27.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -402,8 +402,7 @@ EVENT is the signal received from the process."
   (cond
    ((string-equal event "finished\n")
     (sachac-news-update-last-update)
-    (run-hooks sachac-news--git-hook)
-    )
+    (run-hooks sachac-news--git-hook))
    (t (message "SachaC-news's git sentinel: Something wrong happened. Receive %s event from git async process."
 	       event)))
 
