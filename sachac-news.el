@@ -402,7 +402,7 @@ EVENT is the signal received from the process."
   (cond
    ((string-equal event "finished\n")
     (sachac-news-update-last-update)
-    (run-hooks sachac-news--git-hook))
+    (run-hooks 'sachac-news--git-hook))
    (t (message "SachaC-news's git sentinel: Something wrong happened. Receive %s event from git async process."
 	       event)))
 
