@@ -559,9 +559,11 @@ This function works on any Org file, even at the Emacs news' index.org."
 (defun sachac-news-default-notify-alarm ()
   "The default alarm.
 Use the notify-send to send the alarm."
-  (shell-command (concat "notify-send"
-			 " --app-name=\"Emacs: SachaC-news\""
-			 " \"Check the News!\"")) ) ;; defun
+  (let ((program (executable-find "notify-send")))
+    (when program
+      (shell-command (concat program
+			     " --app-name=\"Emacs: SachaC-news\""
+			     " \"Check the News!\"")))) ) ;; defun
 
 (defun sachac-news-default-sound-alarm ()
   "The default sound alarm.
