@@ -1,12 +1,12 @@
-Sacha Chua's Emacs News is a great way to learn about new things in Emacs. And also, she updates it frequently with cool contents. Also, she uses Org-mode and a git repository, see [[https://github.com/sachac/emacs-news][here]].
+Sacha Chua's Emacs News is a great way to learn about new things in Emacs. And, she updates it frequently with cool contents. Also, she uses Org-mode and a git repository, see [[https://github.com/sachac/emacs-news][here]]!
 
-So, why not create an Emacs command to download all news and show the latests one? In fact, why not download it every day and alert if something new is founded!?
+So... Why not create an Emacs command to download all news and show the latest one? In fact, why not download it every day and alert if something new is founded!?
 
 Well, this Elisp code can do that and a little more:
 
-Every day do:
+Every day it does the following things:
 - Clone or update Sacha Chua's repository in your computer.
-- Get the latest new.
+- Search the latest new in it.
 - Alert if there is a new blog post (a new header in the index.org).
 - Fold the categories that you don't want to see first.
 
@@ -17,19 +17,50 @@ The ~git~ command must be available at the terminal.
 - ~mpv~, ~mplayer~ or ~ogg123~ to alert with sounds. This is optional and can be configured to use another sound player.
 
 * Usage
-Load the elisp file and call the ~M-x sachac-news-show-last-new~ to start downloading and getting the last new. The code will execute the proper git command.
+When ~sachac-news~ is loaded it will activate the timer automatically. It is setted to update the local data once per day. If a new post is detected, an alert (a sound and a notification message) is displayed along with the last-news buffer.  
 
-A timer is setted once per day to update the local data and alert the user if a new post is detected. 
+If you call ~M-x sachac-news-show-last-new~ it will download the data if needed and it will show the latest news. 
 
-* Fold unwanted categories
-You can customize [[help:sachac-news-fold-category-regexp-list][sachac-news-fold-category-regexp-list]] variable with the matching text of the section you want to see folded.
+** The local data and the local git repository
+ The local data is a git repository cloned from Sacha Chua's emacs-news and it is updated using the ~git pull~ command. If you have problems with the git command, see [[help:sachac-news-git-command][sachac-news-git-command]] customization option.
 
-For example, if you are not interested in the "Emacs development" nor in the "Emacs configuration" sections, simply add those strings at the variable. The result can be a list like the following:
+ By default the local repository is cloned in the ~emacs.d/sachac/git~ directory. See [[help:sachac-news-data-directory]] and [[help:sachac-news-git-dirname][sachac-news-git-dirname]] customization options: both of them are used to create the path.
 
-#+BEGIN_SRC elisp
-("Emacs config" "Emacs development")
-#+END_SRC
+ A local elisp data file is maintained under the ~sachac-news-data-directory~ path. This data file contains information about the last update and the last post title. The filename is "data.el" by default, check [[help:sachac-news-data-file][sachac-news-data-file]] to use another filename or change it. 
 
-The first section that matches one of these strings will be folded when you call ~M-x sachac-news-show-last-new~.
+** New post alarm
+ The alarm sound used to alert on new posts can be any sound file reproducible by the first program founded in the system: mpv, mplayer or ogg123. 
 
-The interactive function ~M-x sachac-news-fold-categories~ also works on the main Emacs news index.org file.
+ The program ~notify-send~ is called along with the alarm sound. This is optional and nothing happens if it is not founded.
+
+ If you want to create your own notification function, take a look at the hook  [[help:sachac-news-alarm-functions-hook][sachac-news-alarm-functions-hook]].
+
+** Folding unwanted categories
+ You can customize [[help:sachac-news-fold-category-regexp-list][sachac-news-fold-category-regexp-list]] variable with the matching text of the section you want to see folded.
+
+ For example, if you are not interested in the "Emacs development" nor in the "Emacs configuration" sections, simply add those strings at the variable. The result can be a list like the following:
+
+ #+BEGIN_SRC elisp
+ ("Emacs config" "Emacs development")
+ #+END_SRC
+
+ The first section that matches one of these strings will be folded when you call ~M-x sachac-news-show-last-new~.
+
+ The interactive function ~M-x sachac-news-fold-categories~ also works on the main Emacs-news index.org file.
+
+** Summary of interesting interactive functions
+ These are some of the defined functions callable with M-x:
+
+ - [[help:sachac-news-show-last-new]] :: Show only the latest news.
+ - [[help:sachac-news-open-index-file ]]:: Open the complete emacs-news (the index.org file). Try to not edit this file because it is used for searching new titles.
+ - [[help:sachac-news-show-update-time]] :: Display all the time information about the last updated time, the last timed update, etc.
+ - [[help:sachac-news-update-git]] :: If a the interval time has passed, update the git repository. Force the update with C-u.
+ - [[help:sachac-news-fold-categories]] :: If the current buffer is an org file (the latest news or the index.org), fold the parent items (used as categories) that are listed in the [[help:sachac-news-category-regexp-list][sachac-news-category-regexp-list]] customization option.
+ - [[help:sachac-news-activate-timer]] :: Activate the timer. If the timer is already activated, then reset it. The timer is configure to update the repository (the index.org file) after the hours indicated at the customization option [[help:sachac-news-update-hours-wait][sachac-news-update-hours-wait]].
+ - [[help:sachac-news-deactivate-timer]] :: Deactivate the timer.
+ - [[help:sachac-news-timer-status]] :: Show if the timer is activated or not.
+
+* License
+[[https://www.gnu.org/graphics/gplv3-with-text-136x68.png]]
+
+This work is under the GNU General Public License version 3. See https://www.gnu.org/licenses/gpl-3.0.html for more information.
