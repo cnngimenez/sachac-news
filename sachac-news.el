@@ -22,7 +22,6 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 ;;; Commentary:
 
 ;; Check periodically for new commits on Sacha Chua's news repository.
@@ -58,29 +57,29 @@
 
 ;;; Code:
 
-(provide 'sachac-news)
 (require 'org-element)
 (require 'org-list)
-(require 'cl-extra)
+(require 'cl-lib)
 
 (defgroup sachac-news nil
   "Sacha Chua's Emacs news customizations."
   :group 'applications)
 
-(defcustom sachac-news-git-command "git"
+(defcustom sachac-news-git-command
+  (eval-when-compile
+    (require 'vc-git)
+    vc-git-program)
   "Path or git command name.
 
 Valid values are \"/usr/bin/git\" or \"git\" if it is in the current PATH."
-  :type 'string
-  :group 'sachac-news) ;; defcustom
+  :type 'string) ;; defcustom
 
 (defcustom sachac-news-fold-category-regexp-list '()
   "A list of regexp strings of the matching categories that should be folded.
 
 The function `sachac-news-fold-categories' use this variable to find
 categories that the user wants to hide."
-  :type '(repeat regexp)
-  :group 'sachac-news) ;; defcustom
+  :type '(repeat regexp)) ;; defcustom
 
 (defcustom sachac-news-alarm-sound-file
   "/usr/share/sounds/freedesktop/stereo/bell.oga"
@@ -88,8 +87,7 @@ categories that the user wants to hide."
 If the value is nil or the file does not exists, the `ding' function is used.
 
 See `sachac-news-default-sound-alarm' function."
-  :type 'file
-  :group 'sachac-news) ;; defcustom
+  :type 'file) ;; defcustom
 
 (defcustom sachac-news-alarm-sound-programs
   '(("mpv" . "--really-quiet %s")
@@ -100,22 +98,20 @@ programs is founded on the system, the `ding' function will be used.  The
 first program founded is used.
 
 This variable is used by `sachac-news-default-sound-alarm' function."
-  :type '(alist :key-type string :value-type string)
-  :group 'sachac-news ) ;; defcustom
+  :type '(alist :key-type string :value-type string)) ;; defcustom
 
 (defcustom sachac-news-alarm-functions-hook
   '(sachac-news-default-notify-alarm
     sachac-news-default-sound-alarm)
   "The alarm functions.
 These functions are called when there are new news."
-  :type 'hook
-  :group 'sachac-news ) ;; defcustom
+  :type 'hook) ;; defcustom
 
 (defconst sachac-news-title-regexp
   "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
-  "Regexp used to find news titles in the index.org file." ) ;; defconst
+  "Regexp used to find news titles in the index.org file.") ;; defconst
 
-(defvar sachac-news-timer-setted-time 0
+(defvar sachac-news-timer-setted-time 0	;perhaps mark these as internal: sachac-news--...
   "At what time the timer has been setted?
 See `sachac-news-set-timer'.")
 
@@ -148,66 +144,67 @@ Else, this variable contains nil.")
 
 If USE-INDEX-ORG is t, then load the index.org file.  Else, use the current
 buffer as if it is the index.org."
-
   (if use-index-org
       (with-temp-buffer
 	(insert-file-contents (sachac-news-git-index-org))
-	(sachac-news-take-last-new nil) )
+	(sachac-news-take-last-new nil))
     (progn
       (goto-char (point-min))
       (search-forward-regexp sachac-news-title-regexp)
       (let ((sachac-news-title (org-element-at-point)))
 	(buffer-substring-no-properties
 	 (org-element-property :begin sachac-news-title)
-	 (org-element-property :end sachac-news-title))))) )
+	 (org-element-property :end sachac-news-title))))))
 
-(defcustom sachac-news-data-directory (concat user-emacs-directory
-					     "sachac/")
+(defcustom sachac-news-data-directory
+  (locate-user-emacs-file "sachac")
   "Where is the data directory?"
-  :type 'directory
-  :group 'sachac-news) ;; defcustom
+  :type 'directory) ;; defcustom
 
-(defcustom sachac-news-data-file "data.el"
+(defcustom sachac-news-data-file "data.eld"
   "The configuration and data file.
 This is where the last updated date and other data is stored."
-  :type 'file
-  :group 'sachac-news) ;; defcustom
+  :type 'file) ;; defcustom
 
 (defcustom sachac-news-git-dirname "git"
   "The directory where the git repository should be cloned."
-  :type 'string
-  :group 'sachac-news)
+  :type 'string)
 
+;; She publishes the news every week around the beginning, why check
+;; every day?
 (defcustom sachac-news-update-hours-wait 24
   "The amount of hours when the git clone/pull must wait before be called.
 
 Default is 24 hours.  Only positive values should be used."
-  :type 'integer
-  :group 'sachac-news ) ;; defcustom
+  :type 'natnum
+  :group 'sachac-news) ;; defcustom
 
 (defun sachac-news-dir-git ()
   "Return the complete git path."
-  (concat sachac-news-data-directory "/" sachac-news-git-dirname) )
+  (expand-file-name  sachac-news-git-dirname sachac-news-data-directory))
 
 (defun sachac-news-dir-datafile ()
   "Return the complete data file path."
-  (concat sachac-news-data-directory "/" sachac-news-data-file) )
-
+  (expand-file-name sachac-news-data-file sachac-news-data-directory))
 
 (defun sachac-news-git-index-org ()
   "Return the index.org path on the git directory."
-  (concat (sachac-news-dir-git) "/emacs-news/index.org") )
+  (expand-file-name
+   "index.org"
+   (expand-file-name
+    "emacs-news"
+    (sachac-news-dir-git))))
 
 (defun sachac-news--show-last-new-internal ()
   "Show the last news.
 This is used after the update sentinel is executed.
 See `sachac-news-show-last-new'."
-  (let ((str (sachac-news-take-last-new t)))
+  (let ((str (sachac-news-take-last-new t))) ;unused!
     (with-current-buffer (get-buffer-create "*last-news*")
       (org-mode)
 
-      (delete-region (point-min) (point-max))
-      (insert str)
+      (erase-buffer)
+      (insert "foo")
       
       (goto-char (point-min))
 	
@@ -217,7 +214,7 @@ See `sachac-news-show-last-new'."
 	(sachac-news-update-last-saved-title)
 	(sachac-news-fold-categories))
 	
-      (display-buffer (current-buffer)))) )
+      (display-buffer (current-buffer)))))
 
 (defun sachac-news-show-last-new-if-new ()
   "Show the last new if there is a new title.
@@ -241,16 +238,12 @@ see `sachac-news-update-hours-wait' variable."
 			  #'sachac-news--show-last-new-internal
 			  #'sachac-news--show-last-new-internal))
 
-;;
-;; --------------------
-;; Last saved title
-;;
+;;; Last saved title
 
 (defun sachac-news-update-last-saved-title ()
   "Save the last title into the data file."
-
   (setq sachac-news-last-saved-title (sachac-news-get-last-title))
-  (sachac-news-save-data) )
+  (sachac-news-save-data))
 
 (defun sachac-news-get-last-title (&optional use-current-buffer)
   "Get the first title founded in the current buffer.
@@ -264,7 +257,7 @@ the last title.  Else, if t, use the current buffer, but remember to call
 	nil t)
     (with-temp-buffer
       (insert (sachac-news-take-last-new t))
-      (sachac-news-get-last-title t))) )
+      (sachac-news-get-last-title t))))
  
 (defun sachac-news-is-there-new-title-p (&optional use-current-buffer)
   "According to the last save, return t when a new post is found.
@@ -284,12 +277,9 @@ last news buffer.  Else, open the index.org and retrieve the last news."
 	     
     (or (null sachac-news-last-saved-title)
 	(not (string-equal last-title
-			   sachac-news-last-saved-title)))) )
+			   sachac-news-last-saved-title)))))
 
-;;
-;; --------------------
-;; Data or config. load/save
-;;
+;;; Data or config. load/save
 
 (defun sachac-news-load-data ()
   "Update variables which values are in the configuration file.
@@ -305,7 +295,7 @@ important variables."
 	(setq sachac-news-last-saved-title
 	      (alist-get 'last-saved-title expr))
 	;; Return the expression loaded
-	expr))) )
+	expr))))
 
 (defun sachac-news-save-data ()
   "Save some important variables into the data file.
@@ -313,20 +303,17 @@ These variables can be loaded again with `sachac-news-load-data'."
   (with-temp-buffer
     (let ((data (list (cons 'last-update sachac-news-last-update)
 		      (cons 'last-saved-title sachac-news-last-saved-title))))
-    (insert (prin1-to-string data))
-    (write-file (sachac-news-dir-datafile))
-    data)) )
+      (prin1 data (current-buffer))
+      (write-region nil nil (sachac-news-dir-datafile) nil 'silent)
+      data)))
 
 (defun sachac-news-load-data-if-needed ()
   "If the data has not been loaded yet, load it."
   (unless sachac-news-data-loaded
     (sachac-news-load-data)
-    (setq sachac-news-data-loaded t)) )
+    (setq sachac-news-data-loaded t)))
 
-;;
-;; --------------------
-;; Git clone/update
-;;
+;;; Git clone/update
 
 (defun sachac-news-update-last-update ()
   "Update the `sachac-news-last-update' date with the current date."
@@ -335,6 +322,7 @@ These variables can be loaded again with `sachac-news-load-data'."
 
 (defun sachac-news-update-time-str ()
   "Return a string with the last time and the amount of time left."
+  ;; Perhaps format this in a temporary buffer, then return the buffer string?
   (format "Waiting time: %s hours
 -- Update --
 Last time updated: %s
@@ -361,19 +349,19 @@ Time left for automatic forced update: %s %s"
 					     (* sachac-news-update-hours-wait 60 60)))
 	    "No timer setted")
 	  (number-to-string (/ (sachac-news-get-update-time-left) 60))
-	  "minutes") )
+	  "minutes"))
 
 (defun sachac-news-get-update-wait-seconds ()
   "Get the `sachac-news-update-hours-wait' in seconds."
-  (* sachac-news-update-hours-wait 60 60) )
+  (* sachac-news-update-hours-wait 60 60))
 
 (defun sachac-news-show-update-time ()
   "Display the time left for the next update."
   (interactive)
   (sachac-news-load-data-if-needed)
   (if sachac-news-last-update
-      (message (sachac-news-update-time-str))
-    (message "Git has not been called before.")) )
+      (message "%s" (sachac-news-update-time-str))
+    (message "Git has not been called before.")))
 
 (defun sachac-news-get-update-time-left ()
   "Return the seconds left for the next scheduled update.
@@ -384,7 +372,7 @@ been setted)."
   (if sachac-news-timer-setted-time
       (- (+ sachac-news-timer-setted-time (sachac-news-get-update-wait-seconds))
 	 (time-convert (current-time) 'integer))
-    0) )
+    0))
 
 (defun sachac-news-get-update-enable-time-left ()
   "Return the seconds left for the next enabled update.
@@ -398,7 +386,7 @@ loaded)."
   (if sachac-news-last-update
       (- (+ sachac-news-last-update (sachac-news-get-update-wait-seconds))
 	 (time-convert (current-time) 'integer))
-    0) )
+    0))
 
 (defun sachac-news-get-update-time-elapsed ()
   "Return the seconds elapsed since the last update.
@@ -408,19 +396,19 @@ Return the numbre of seconds after the maximum wait + 1 if
   (if sachac-news-last-update
       (- (time-convert (current-time) 'integer)
 	 sachac-news-last-update)
-    (+ (sachac-news-get-update-wait-seconds) 1)) )
+    (+ (sachac-news-get-update-wait-seconds) 1)))
 
 (defun sachac-news-is-time-for-update-p ()
   "Check if a day has passed since the last update."
   (if sachac-news-last-update
       (>= (sachac-news-get-update-time-elapsed)
-	 (sachac-news-get-update-wait-seconds) )
-    t) )
+	 (sachac-news-get-update-wait-seconds))
+    t))
 
 (defun sachac-news-create-dirs ()
   "Create the needed directories to save data and the repository."
   (make-directory sachac-news-data-directory t)
-  (make-directory (sachac-news-dir-git) t) )
+  (make-directory (sachac-news-dir-git) t))
 
 (defun sachac-news--git-sentinel (_process event)
   "Git sentinel.
@@ -454,19 +442,19 @@ FUNC-CALL-AFTER is a function called after the git process endend successfully."
     (when func-call-after
       (add-hook 'sachac-news--git-hook func-call-after))
     (setq sachac-news--git-process
-	  (if (file-exists-p (sachac-news-git-index-org))
-	      (start-process-shell-command "sachac-news-git-pull"
+	  (let ((default-directory (expand-file-name "emacs-news" (sachac-news-dir-git))))
+	    ;; I am not sure what the point is there, but I suspect
+	    ;; there should be a better way to do this using timers
+	    ;; and vc-git.
+	    (if (file-exists-p (sachac-news-git-index-org))
+		(start-process-shell-command "sachac-news-git-pull"
+					     "*sachac-news-git*"
+					     (concat "sleep 60 ; " git-program " pull"))
+	      (start-process-shell-command "sachac-news-git-clone"
 					   "*sachac-news-git*"
-					   (concat
-					    "cd " (sachac-news-dir-git) "/emacs-news ; sleep 60 ; "
-					    git-program
-					    " pull"))
-	    (start-process-shell-command "sachac-news-git-clone"
-					 "*sachac-news-git*"
-					 (concat
-					"cd " (sachac-news-dir-git) "; sleep 60 ; "
-					git-program " clone https://github.com/sachac/emacs-news.git"))))
-    (set-process-sentinel sachac-news--git-process #'sachac-news--git-sentinel)) )
+					   (concat "sleep 60 ; " git-program " clone \
+https://github.com/sachac/emacs-news.git")))))
+    (set-process-sentinel sachac-news--git-process #'sachac-news--git-sentinel)))
 
 
 (defun sachac-news-update-git (&optional force-update
@@ -501,11 +489,11 @@ pull/clone."
 	    (when callback-if-no-update
 	      (funcall callback-if-no-update))))
       ;; Git program not founded
-      (message "%s %s\n%s\n%s"
-	       "The Git program has not been founded!"
-	       "SachaC-news cannot download news without it!"
-	       "Please install it in our system or customize the variable:"
-	       "M-x customize-option sachac-news-git-command"))) )
+      (message (substitute-command-keys
+		"The Git program has not been founded! \
+SachaC-news cannot download news without it!
+Please install it in our system or customize the variable: )
+\\[customize-option] sachac-news-git-command")))))
 
 (defun sachac-news-open-index-file ()
   "Open the index.org file from the local repository.
@@ -519,15 +507,10 @@ how the update is done."
   (sachac-news-update-git)
   (if (file-exists-p (sachac-news-git-index-org))
       (find-file (sachac-news-git-index-org))
-    (message "%s\n%s"
-	     "Index file not found! Did something wrong happen?"
-	     "See `sachac-news-update-git'.")) )
+    (message "Index file not found! Did something wrong happen?
+See `sachac-news-update-git'.")))
 
-
-;;
-;; --------------------
-;; Folding categories
-;;
+;;; Folding categories
 
 (defun sachac-news-find-all-categories (category-regexps &optional org-element)
   "Match paragraph with the CATEGORY-REGEXPS regexp.
@@ -554,7 +537,7 @@ Returns a list of org-element of type \\'item found in the index.org."
 			  (string-match-p category element))
 			category-regexps))
 
-	    parent)))) )
+	    parent)))))
 
 
 (defun sachac-news-fold-all-items (item-list)
@@ -582,12 +565,9 @@ This function works on any Org file, even at the Emacs news' index.org."
   (let ((category-list (if category-regexp-list category-regexp-list
 			 sachac-news-fold-category-regexp-list)))
     (sachac-news-fold-all-items
-     (sachac-news-find-all-categories category-list))) )
+     (sachac-news-find-all-categories category-list))))
 
-;;
-;; --------------------
-;; Alarm
-;;
+;;; Alarm
 
 (defun sachac-news-default-notify-alarm ()
   "The default alarm.
@@ -596,7 +576,7 @@ Use the notify-send to send the alarm."
     (when program
       (shell-command (concat program
 			     " --app-name=\"Emacs: SachaC-news\""
-			     " \"Check the News!\"")))) )
+			     " \"Check the News!\"")))))
 
 (defun sachac-news-default-sound-alarm ()
   "The default sound alarm.
@@ -619,17 +599,14 @@ as fallback."
 	       (car program-data)
 	       (split-string
 		(format (cadr program-data) sachac-news-alarm-sound-file)))
-      (ding t))) )
+      (ding t))))
 
 (defun sachac-news-run-alarm-if-needed ()
   "Run the alarm hook functions if there is a new post ."
   (when (sachac-news-is-there-new-title-p)
-    (run-hooks 'sachac-news-alarm-functions-hook)) )
+    (run-hooks 'sachac-news-alarm-functions-hook)))
 
-;;
-;; --------------------
-;; Timer
-;;
+;;; Timer
 
 (defun sachac-news-timer-function ()
   "The function used by the timer."
@@ -638,7 +615,7 @@ as fallback."
   (sachac-news-update-git t #'sachac-news-show-last-new-if-new)
   (sachac-news-run-alarm-if-needed)
 
-  (sachac-news-activate-timer) )
+  (sachac-news-activate-timer))
 
 
 (defun sachac-news-activate-timer ()
@@ -650,9 +627,9 @@ Set the timer for executing on `sachac-news-update-hours-wait' hours."
   (setq sachac-news-timer-setted-time (time-convert (current-time) 'integer))
   (setq sachac-news-timer
 	(run-at-time
-	 (concat (number-to-string sachac-news-update-hours-wait) "hours")
-		     nil
-		     #'sachac-news-timer-function)) )
+	 (format "%d hours" sachac-news-update-hours-wait)
+	 nil
+	 #'sachac-news-timer-function)))
 
 (defun sachac-news-deactivate-timer ()
   "Stop and cancel the timer."
@@ -660,7 +637,7 @@ Set the timer for executing on `sachac-news-update-hours-wait' hours."
   (when (timerp sachac-news-timer)
     (cancel-timer sachac-news-timer)
     (setq sachac-news-timer nil))
-  (setq sachac-news-timer-setted-time nil) )
+  (setq sachac-news-timer-setted-time nil))
 
 (defun sachac-news-timer-status ()
   "Is the timer setted or not?
@@ -668,8 +645,13 @@ Report the user about the timer status."
   (interactive)
   (if (timerp sachac-news-timer)
       (message "Timer is setted and running.")
-    (message "Timer is deactivated")) )
+    (message "Timer is deactivated")))
 
-(sachac-news-activate-timer)
+;; Don't activate side effects while loading your package!  Instruct
+;; the users to add this to their init.el, so that one knows what is
+;; going on.
 
+;; (sachac-news-activate-timer)
+
+(provide 'sachac-news)
 ;;; sachac-news.el ends here
