@@ -6,7 +6,7 @@
 ;; Maintainer: Christian Gimenez <cnngimenez@disroot.org>
 ;; Version: 0.1.0
 ;; Keywords: news
-;; URL: https://github.com/cnngimenez/sachac-news
+;; URL: https://git.sr.ht/~cngimenez/sachac-news
 ;; Package-Requires: ((emacs "27.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
