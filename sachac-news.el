@@ -199,12 +199,13 @@ Default is 24 hours.  Only positive values should be used."
   "Show the last news.
 This is used after the update sentinel is executed.
 See `sachac-news-show-last-new'."
-  (let ((str (sachac-news-take-last-new t))) ;unused!
+
+  (let ((org-data-str (sachac-news-take-last-new t)))
     (with-current-buffer (get-buffer-create "*last-news*")
       (org-mode)
 
       (erase-buffer)
-      (insert "foo")
+      (insert org-data-str)
       
       (goto-char (point-min))
 	
