@@ -79,7 +79,8 @@ Valid values are \"/usr/bin/git\" or \"git\" if it is in the current PATH."
 
 The function `sachac-news-fold-categories' use this variable to find
 categories that the user wants to hide."
-  :type '(repeat regexp)) ;; defcustom
+  :type '(repeat regexp)
+  :group 'sachac-news)
 
 (defcustom sachac-news-alarm-sound-file
   "/usr/share/sounds/freedesktop/stereo/bell.oga"
@@ -87,7 +88,8 @@ categories that the user wants to hide."
 If the value is nil or the file does not exists, the `ding' function is used.
 
 See `sachac-news-default-sound-alarm' function."
-  :type 'file) ;; defcustom
+  :type 'file
+  :group 'sachac-news)
 
 (defcustom sachac-news-alarm-sound-programs
   '(("mpv" . "--really-quiet %s")
@@ -98,14 +100,22 @@ programs is founded on the system, the `ding' function will be used.  The
 first program founded is used.
 
 This variable is used by `sachac-news-default-sound-alarm' function."
-  :type '(alist :key-type string :value-type string)) ;; defcustom
+  :type '(alist :key-type string :value-type string)
+  :group 'sachac-news)
 
 (defcustom sachac-news-alarm-functions-hook
   '(sachac-news-default-notify-alarm
     sachac-news-default-sound-alarm)
   "The alarm functions.
 These functions are called when there are new news."
-  :type 'hook) ;; defcustom
+  :type 'hook
+  :group 'sachac-news)
+
+(defcustom sachac-news-sacha-repository-url "https://git.sr.ht/~cngimenez/emacs-news"
+  "Sacha Chua's Emacs News git repository.
+This is the git URL where to download Emacs News by Sacha Chua."
+  :type 'string
+  :group 'sachac-news)
 
 (defconst sachac-news-title-regexp
   "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
@@ -452,11 +462,11 @@ FUNC-CALL-AFTER is a function called after the git process endend successfully."
 					     "*sachac-news-git*"
 					     (concat "sleep 60 ; " git-program " pull"))
 	      (start-process-shell-command "sachac-news-git-clone"
-					   "*sachac-news-git*"
-					   (concat "sleep 60 ; " git-program " clone \
-https://github.com/sachac/emacs-news.git")))))
+					                   "*sachac-news-git*"
+                                       (format "sleep 60 ; %s clone %s"
+                                               git-program
+                                               sachac-news-sacha-repository-url)))))
     (set-process-sentinel sachac-news--git-process #'sachac-news--git-sentinel)))
-
 
 (defun sachac-news-update-git (&optional force-update
 				     callback-after-update
