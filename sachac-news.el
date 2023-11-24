@@ -117,6 +117,67 @@ This is the git URL where to download Emacs News by Sacha Chua."
   :type 'string
   :group 'sachac-news)
 
+(defcustom sachac-news-after-download-function #'sachac-news-use-most-recent-org
+  "Export function to run when there is a new post.
+After the git pull, and when there is a new post, run this function.
+The most-recent.org file will be the current buffer before calling this
+function.
+
+This customization is intended to:
+- export the most-recent.org file into another format and show it
+  (in case the user wants to see Emacs News in another format), or
+- show a different file from the git repository.
+
+In any case, the function must return the filename (without path) to
+show.  The function must *not* open the file nor switch to that buffer.
+If the function returns nil, the default most-recent.org will be used.
+
+One of these functions are available and can be used:
+- `sachac-news-use-most-recent-org'
+- `sachac-news-use-most-recent-txt'
+- `sachac-news-use-most-recent-html'
+- `sachac-news-use-index-org'
+- `sachac-news-use-index-txt'
+- `sachac-news-use-index-html'
+- `org-ascii-export-to-ascii'
+- `org-html-export-to-html'
+- `org-latex-export-to-latex'
+- `org-md-export-to-markdown' (org-md must be installed)
+- Any org-*-export-to-* function
+- Any user created function"
+  :type 'function
+  :group 'sachac-news)
+
+(defun sachac-news-use-filename (filename)
+  "Return the filename if it exists on the git repository.
+FILENAME must be a string."
+  (when (file-exists-p (sachac-news-git-file filename))
+    filename))
+
+(defun sachac-news-use-most-recent-org ()
+  "Return the most-recent.org filename if exists."
+  (sachac-news-use-filename "most-recent.org"))
+
+(defun sachac-news-use-most-recent-txt ()
+  "Return the most-recent.txt filename if exists."
+  (sachac-news-use-filename "most-recent.txt"))
+
+(defun sachac-news-use-most-recent-html ()
+  "Return the most-recent.html filename if exists."
+  (sachac-news-use-filename "most-recent.html"))
+
+(defun sachac-news-use-index-org ()
+  "Return the index.org filename if exists."
+  (sachac-news-use-filename "index.org"))
+
+(defun sachac-news-use-index-txt ()
+  "Return the index.txt filename if exists."
+  (sachac-news-use-filename "index.txt"))
+
+(defun sachac-news-use-index-html ()
+  "Return the index.html filename if exists."
+  (sachac-news-use-filename "index.html"))
+
 (defconst sachac-news-title-regexp
   "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
   "Regexp used to find news titles in the index.org file.") ;; defconst
@@ -191,19 +252,24 @@ Default is 24 hours.  Only positive values should be used."
 
 (defun sachac-news-dir-git ()
   "Return the complete git path."
-  (expand-file-name  sachac-news-git-dirname sachac-news-data-directory))
+  (expand-file-name sachac-news-git-dirname sachac-news-data-directory))
 
 (defun sachac-news-dir-datafile ()
   "Return the complete data file path."
   (expand-file-name sachac-news-data-file sachac-news-data-directory))
 
-(defun sachac-news-git-index-org ()
-  "Return the index.org path on the git directory."
+(defun sachac-news-git-file (filename)
+  "Return the file path in the local git repository.
+FILENAME must be a string with the file name to expand."
   (expand-file-name
-   "index.org"
+   filename
    (expand-file-name
     "emacs-news"
     (sachac-news-dir-git))))
+
+(defun sachac-news-git-index-org ()
+  "Return the index.org path on the git directory."
+  (sachac-news-git-file "index.org"))
 
 (defun sachac-news--show-last-new-internal ()
   "Show the last news.
