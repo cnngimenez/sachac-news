@@ -28,6 +28,19 @@ If you call ~M-x sachac-news-show-last-new~ it will download the data if needed 
 
  A local elisp data file is maintained under the ~sachac-news-data-directory~ path. This data file contains information about the last update and the last post title. The filename is "data.el" by default, check [[help:sachac-news-data-file][sachac-news-data-file]] to use another filename or change it. 
 
+ 
+** Using another repository
+It is possible to change the default repository by customizing ~sachac-news-sacha-repository-url~ variable. Set the new git clone/pull URL as a value to your favourite git repository.
+
+** Reading in other formats
+Sacha Chua exports the index.org and most-recent.org in other formats: ASCII text (txt) and HTML. To use them instead of the default most-recent.org file, set ~sachac-news-use-git-file~ customization variable to any of the repository files.
+
+Also, your Emacs can export Org-mode to other formats. If you want to read to a particular format that is not present on the git repository, ~sachac-news-after-download-function~ can be set to the Org-mode export function you prefer.
+
+For instance, supose you want to read the latests Emacs News in Markdown, and you have installed org-md package, set ~sachac-news-after-download-function~ to ~#'org-md-export-to-markdown~ function, and ~sachac-news-use-git-file~ to ~most-recent.org~. When the timer reachs zero seconds, it will update the git repository downloading all its files, open the most-recent.org one, and tries to export it to Markdown. The resulting file is shown to the user.
+
+Remember, if ~sachac-news-after-download-function~ is ~nil~, then it defaults to display the file specified on ~sachac-news-use-git-file~. This is the default behaviour. Also, if the new file is not Org-mode, the automatic folding is not supported (see below, Section [[*Folding unwanted categories][Folding unwanted categories]]).
+
 ** New post alarm
  The alarm sound used to alert on new posts can be any sound file reproducible by the first program founded in the system: mpv, mplayer or ogg123. 
 
