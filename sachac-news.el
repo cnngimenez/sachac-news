@@ -117,28 +117,39 @@ This is the git URL where to download Emacs News by Sacha Chua."
   :type 'string
   :group 'sachac-news)
 
-(defcustom sachac-news-after-download-function #'sachac-news-use-most-recent-org
+(defcustom sachac-news-use-git-file "most-recent.org"
+  "Which file from the git repository to use or show?
+This file will be opened to show or to be exported depending on the
+value of `sachac-news-after-download-function'.  If its value is nil,
+this file will be displayed.  If its value is an export function, then
+it will be used as a base file to be exported, and the result file will
+be displayed.
+
+The file name can be any file.  If it is not an Org-mode file, Emacs
+will open the file just as `find-file' does."
+  :type 'string
+  :group 'sachac-news)
+
+(defcustom sachac-news-after-download-function nil
   "Export function to run when there is a new post.
 After the git pull, and when there is a new post, run this function.
-The most-recent.org file will be the current buffer before calling this
-function.
+The file indicated in `sachac-news-use-git-file' will be the current
+buffer before calling this function.
 
-This customization is intended to:
-- export the most-recent.org file into another format and show it
-  (in case the user wants to see Emacs News in another format), or
-- show a different file from the git repository.
+This customization is intended to export the most-recent.org, index.org
+or any file into another format and show it (in case the user wants to
+see Emacs News in another format).
 
 In any case, the function must return the filename (without path) to
 show.  The function must *not* open the file nor switch to that buffer.
-If the function returns nil, the default most-recent.org will be used.
+If the function returns nil, the `sachac-news-useg-git-file' will be
+shown.
+
+If the value is nil, no export function is evaluated.  Only, show the
+ `sachac-news-use-git-file' file as it is.
 
 One of these functions are available and can be used:
-- `sachac-news-use-most-recent-org'
-- `sachac-news-use-most-recent-txt'
-- `sachac-news-use-most-recent-html'
-- `sachac-news-use-index-org'
-- `sachac-news-use-index-txt'
-- `sachac-news-use-index-html'
+- nil (no export is executed)
 - `org-ascii-export-to-ascii'
 - `org-html-export-to-html'
 - `org-latex-export-to-latex'
@@ -271,11 +282,23 @@ FILENAME must be a string with the file name to expand."
   "Return the index.org path on the git directory."
   (sachac-news-git-file "index.org"))
 
-(defun sachac-news--show-last-new-internal ()
-  "Show the last news.
-This is used after the update sentinel is executed.
-See `sachac-news-show-last-new'."
+(defun sachac-news-prepare-file (file-name)
+  "Show the given file to the user.
+FILE-NAME is a string with the file to show.
 
+Return the buffer with the file prepared."
+  (with-current-buffer (find-file-noselect (sachac-news-git-file file-name))
+    (save-excursion
+      (when (equal major-mode 'org-mode)
+        ;; It is an org file... fold unwanted categories.
+        (sachac-news-fold-categories)))
+    
+    (current-buffer)))
+
+(defun sachac-news-prepare-index-file ()
+  "Show only the last news from the index.org file.
+
+Return the buffer with the index.org prepared."
   (let ((org-data-str (sachac-news-take-last-new t)))
     (with-current-buffer (get-buffer-create "*last-news*")
       (org-mode)
@@ -284,20 +307,68 @@ See `sachac-news-show-last-new'."
       (insert org-data-str)
       
       (goto-char (point-min))
-	
       (save-excursion
-	(sachac-news-run-alarm-if-needed)
-	  
-	(sachac-news-update-last-saved-title)
-	(sachac-news-fold-categories))
-	
-      (display-buffer (current-buffer)))))
+        (sachac-news-fold-categories))
 
+      (current-buffer))))
+
+(defun sachac-news-prepare-news-buffer ()
+  "Build the buffer to show to the user.
+Open the file, export it, and/or fold the categories if needed to
+prepare the buffer for the user consumption."
+  (with-current-buffer
+      (cond
+       ((string= sachac-news-use-git-file "index.org")
+        ;; We do not want to open the whole index.org: it is enormous!
+        (sachac-news-prepare-index-file))
+       ((stringp sachac-news-use-git-file)
+        ;; The user chose another file to open
+        (sachac-news-prepare-file sachac-news-use-git-file))
+       (t
+        ;; Default: index.org
+        (sachac-news-prepare-index-file)))
+
+    ;; Return the exported buffer or the current buffer depending on
+    ;; `sachac-news-after-download-function'.
+    (if (and (equal major-mode 'org-mode)
+             sachac-news-after-download-function)
+        (sachac-news-export-buffer sachac-news-after-download-function)
+      (current-buffer))))
+
+(defun sachac-news--show-last-new-internal ()
+  "Show the last news.
+This is used after the update sentinel is executed.
+See `sachac-news-show-last-new'."
+
+  (display-buffer (sachac-news-prepare-news-buffer))
+ 
+  (sachac-news-run-alarm-if-needed)
+  (sachac-news-update-last-saved-title))
+
+(defun sachac-news-export-buffer (function)
+  "Export the current buffer and show the results.
+The current buffer must be an Org-mode (it is not checked!).
+
+Export the git file selected by user using FUNCTION and switch to that
+buffer.
+
+If the FUNCTION export returns nil, return the current buffer.
+
+If the FUNCTION is nil, returt the current buffer.
+
+Return the exported buffer otherwise."
+  (let ((file-to-open (when function (funcall function))))
+    ;; If file was exported, show it, if not show the user selected one.
+    (if file-to-open
+        (find-file-noselect file-to-open)
+      (current-buffer))))
+  
 (defun sachac-news-show-last-new-if-new ()
-  "Show the last new if there is a new title.
+  "Show the last new only if there is a new title.
 
-No update is performed.  This function is supposed to be used as a callback for
-`sachac-news-update-git'."
+No update is performed.  This function is supposed to be used as a
+callback for `sachac-news-update-git' to react when there is a new
+title."
   (when (sachac-news-is-there-new-title-p)
     (sachac-news--show-last-new-internal)))
 
@@ -330,8 +401,8 @@ the last title.  Else, if t, use the current buffer, but remember to call
 `sachac-news-take-last-new' first."
   (if use-current-buffer
       (org-element-map (org-element-parse-buffer) 'headline
-	(lambda (element) (org-element-property :raw-value element))
-	nil t)
+	    (lambda (element) (org-element-property :raw-value element))
+	    nil t)
     (with-temp-buffer
       (insert (sachac-news-take-last-new t))
       (sachac-news-get-last-title t))))
@@ -379,7 +450,7 @@ important variables."
 These variables can be loaded again with `sachac-news-load-data'."
   (with-temp-buffer
     (let ((data (list (cons 'last-update sachac-news-last-update)
-		      (cons 'last-saved-title sachac-news-last-saved-title))))
+		              (cons 'last-saved-title sachac-news-last-saved-title))))
       (prin1 data (current-buffer))
       (write-region nil nil (sachac-news-dir-datafile) nil 'silent)
       data)))
