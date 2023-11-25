@@ -111,7 +111,7 @@ These functions are called when there are new news."
   :type 'hook
   :group 'sachac-news)
 
-(defcustom sachac-news-sacha-repository-url "https://git.sr.ht/~cngimenez/emacs-news"
+(defcustom sachac-news-sacha-repository-url "https://git.sr.ht/~sachac/sachac-emacs-news"
   "Sacha Chua's Emacs News git repository.
 This is the git URL where to download Emacs News by Sacha Chua."
   :type 'string
