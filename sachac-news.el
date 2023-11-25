@@ -159,36 +159,6 @@ One of these functions are available and can be used:
   :type 'function
   :group 'sachac-news)
 
-(defun sachac-news-use-filename (filename)
-  "Return the filename if it exists on the git repository.
-FILENAME must be a string."
-  (when (file-exists-p (sachac-news-git-file filename))
-    filename))
-
-(defun sachac-news-use-most-recent-org ()
-  "Return the most-recent.org filename if exists."
-  (sachac-news-use-filename "most-recent.org"))
-
-(defun sachac-news-use-most-recent-txt ()
-  "Return the most-recent.txt filename if exists."
-  (sachac-news-use-filename "most-recent.txt"))
-
-(defun sachac-news-use-most-recent-html ()
-  "Return the most-recent.html filename if exists."
-  (sachac-news-use-filename "most-recent.html"))
-
-(defun sachac-news-use-index-org ()
-  "Return the index.org filename if exists."
-  (sachac-news-use-filename "index.org"))
-
-(defun sachac-news-use-index-txt ()
-  "Return the index.txt filename if exists."
-  (sachac-news-use-filename "index.txt"))
-
-(defun sachac-news-use-index-html ()
-  "Return the index.html filename if exists."
-  (sachac-news-use-filename "index.html"))
-
 (defconst sachac-news-title-regexp
   "^\\*\\*[[:space:]]+[[:digit:]]+-[[:digit:]]+-[[:digit:]]+[[:space:]]+Emacs news"
   "Regexp used to find news titles in the index.org file.") ;; defconst
