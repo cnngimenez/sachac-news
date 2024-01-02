@@ -117,7 +117,7 @@ This is the git URL where to download Emacs News by Sacha Chua."
   :type 'string
   :group 'sachac-news)
 
-(defcustom sachac-news-use-git-file "most-recent.org"
+(defcustom sachac-news-use-git-file "most-recent.txt"
   "Which file from the git repository to use or show?
 This file will be opened to show or to be exported depending on the
 value of `sachac-news-after-download-function'.  If its value is nil,
