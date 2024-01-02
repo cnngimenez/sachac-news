@@ -1,3 +1,6 @@
+#+title: README
+#+author:
+
 Sacha Chua's Emacs News is a great way to learn about new things in Emacs. And, she updates it frequently with cool contents. Also, she uses Org-mode and a git repository, see [[https://github.com/sachac/emacs-news][here]]!
 
 So... Why not create an Emacs command to download all news and show the latest one? In fact, why not download it every day and alert if something new is founded!?

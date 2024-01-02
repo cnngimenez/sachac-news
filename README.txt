@@ -1,0 +1,216 @@
+                                ━━━━━━━━
+                                 README
+                                ━━━━━━━━
+
+
+Table of Contents
+─────────────────
+
+1. Requirements
+2. Usage
+.. 1. The local data and the local git repository
+.. 2. Using another repository
+.. 3. Reading in other formats
+.. 4. New post alarm
+.. 5. Folding unwanted categories
+.. 6. Summary of interesting interactive functions
+3. License
+
+
+Sacha Chua's Emacs News is a great way to learn about new things in
+Emacs. And, she updates it frequently with cool contents. Also, she uses
+Org-mode and a git repository, see [here]!
+
+So… Why not create an Emacs command to download all news and show the
+latest one? In fact, why not download it every day and alert if
+something new is founded!?
+
+Well, this Elisp code can do that and a little more:
+
+Every day it does the following things:
+• Clone or update Sacha Chua's repository in your computer.
+• Search the latest new in it.
+• Alert if there is a new blog post (a new header in the index.org).
+• Fold the categories that you don't want to see first.
+
+
+[here] <https://github.com/sachac/emacs-news>
+
+
+1 Requirements
+══════════════
+
+  The `git' command must be available at the terminal.
+
+  • `notify-send' is used to alert on new posts. This is optional.
+  • `mpv', `mplayer' or `ogg123' to alert with sounds. This is optional
+    and can be configured to use another sound player.
+
+
+2 Usage
+═══════
+
+  When `sachac-news' is loaded it will activate the timer
+  automatically. It is setted to update the local data once per day. If
+  a new post is detected, an alert (a sound and a notification message)
+  is displayed along with the last-news buffer.
+
+  If you call `M-x sachac-news-show-last-new' it will download the data
+  if needed and it will show the latest news.
+
+
+2.1 The local data and the local git repository
+───────────────────────────────────────────────
+
+  The local data is a git repository cloned from Sacha Chua's emacs-news
+  and it is updated using the `git pull' command. If you have problems
+  with the git command, see [sachac-news-git-command] customization
+  option.
+
+  By default the local repository is cloned in the `emacs.d/sachac/git'
+  directory. See <help:sachac-news-data-directory> and
+  [sachac-news-git-dirname] customization options: both of them are used
+  to create the path.
+
+  A local elisp data file is maintained under the
+  `sachac-news-data-directory' path. This data file contains information
+  about the last update and the last post title. The filename is
+  "data.el" by default, check [sachac-news-data-file] to use another
+  filename or change it.
+
+
+[sachac-news-git-command] <help:sachac-news-git-command>
+
+[sachac-news-git-dirname] <help:sachac-news-git-dirname>
+
+[sachac-news-data-file] <help:sachac-news-data-file>
+
+
+2.2 Using another repository
+────────────────────────────
+
+  It is possible to change the default repository by customizing
+  `sachac-news-sacha-repository-url' variable. Set the new git
+  clone/pull URL as a value to your favourite git repository.
+
+
+2.3 Reading in other formats
+────────────────────────────
+
+  Sacha Chua exports the index.org and most-recent.org in other formats:
+  ASCII text (txt) and HTML. To use them instead of the default
+  most-recent.org file, set `sachac-news-use-git-file' customization
+  variable to any of the repository files.
+
+  Also, your Emacs can export Org-mode to other formats. If you want to
+  read to a particular format that is not present on the git repository,
+  `sachac-news-after-download-function' can be set to the Org-mode
+  export function you prefer.
+
+  For instance, supose you want to read the latests Emacs News in
+  Markdown, and you have installed org-md package, set
+  `sachac-news-after-download-function' to `#'org-md-export-to-markdown'
+  function, and `sachac-news-use-git-file' to `most-recent.org'. When
+  the timer reachs zero seconds, it will update the git repository
+  downloading all its files, open the most-recent.org one, and tries to
+  export it to Markdown. The resulting file is shown to the user.
+
+  Remember, if `sachac-news-after-download-function' is `nil', then it
+  defaults to display the file specified on
+  `sachac-news-use-git-file'. This is the default behaviour. Also, if
+  the new file is not Org-mode, the automatic folding is not supported
+  (see below, Section [Folding unwanted categories]).
+
+
+[Folding unwanted categories] See section 2.5
+
+
+2.4 New post alarm
+──────────────────
+
+  The alarm sound used to alert on new posts can be any sound file
+  reproducible by the first program founded in the system: mpv, mplayer
+  or ogg123.
+
+  The program `notify-send' is called along with the alarm sound. This
+  is optional and nothing happens if it is not founded.
+
+  If you want to create your own notification function, take a look at
+  the hook [sachac-news-alarm-functions-hook].
+
+
+[sachac-news-alarm-functions-hook]
+<help:sachac-news-alarm-functions-hook>
+
+
+2.5 Folding unwanted categories
+───────────────────────────────
+
+  You can customize [sachac-news-fold-category-regexp-list] variable
+  with the matching text of the section you want to see folded.
+
+  For example, if you are not interested in the "Emacs development" nor
+  in the "Emacs configuration" sections, simply add those strings at the
+  variable. The result can be a list like the following:
+
+  ┌────
+  │ ("Emacs config" "Emacs development")
+  └────
+
+  The first section that matches one of these strings will be folded
+  when you call `M-x sachac-news-show-last-new'.
+
+  The interactive function `M-x sachac-news-fold-categories' also works
+  on the main Emacs-news index.org file.
+
+
+[sachac-news-fold-category-regexp-list]
+<help:sachac-news-fold-category-regexp-list>
+
+
+2.6 Summary of interesting interactive functions
+────────────────────────────────────────────────
+
+  These are some of the defined functions callable with M-x:
+
+  <help:sachac-news-show-last-new>
+        Show only the latest news.
+
+        <help:sachac-news-open-index-file >:: Open the complete
+        emacs-news (the index.org file). Try to not edit this file
+        because it is used for searching new titles.
+  <help:sachac-news-show-update-time>
+        Display all the time information about the last updated time,
+        the last timed update, etc.
+  <help:sachac-news-update-git>
+        If a the interval time has passed, update the git
+        repository. Force the update with C-u.
+  <help:sachac-news-fold-categories>
+        If the current buffer is an org file (the latest news or the
+        index.org), fold the parent items (used as categories) that are
+        listed in the [sachac-news-category-regexp-list] customization
+        option.
+  <help:sachac-news-activate-timer>
+        Activate the timer. If the timer is already activated, then
+        reset it. The timer is configure to update the repository (the
+        index.org file) after the hours indicated at the customization
+        option [sachac-news-update-hours-wait].
+  <help:sachac-news-deactivate-timer>
+        Deactivate the timer.
+  <help:sachac-news-timer-status>
+        Show if the timer is activated or not.
+
+
+[sachac-news-category-regexp-list]
+<help:sachac-news-category-regexp-list>
+
+[sachac-news-update-hours-wait] <help:sachac-news-update-hours-wait>
+
+
+3 License
+═════════
+
+  <https://www.gnu.org/graphics/gplv3-with-text-136x68.png>
+
+  This work is under the GNU General Public License version 3. See
+  <https://www.gnu.org/licenses/gpl-3.0.html> for more information.
